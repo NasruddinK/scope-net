@@ -58,7 +58,7 @@ def _demo_data(n=400, seed=7):
 
 def load_data():
     """Return (supply, emission_factors, compliance, using_demo_flag)."""
-    sc, ef, comp = _read(F_SUPPLY), _read(F_EF), _read(F_COMP)
+    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _read(F_COMP)
     demo = sc is None or ef is None or comp is None
     if demo:
         d_sc, d_ef, d_comp = _demo_data()
