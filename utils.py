@@ -83,6 +83,36 @@ def _coerce_ef(ef):
     return out.dropna(subset=["factor_tco2e_per_unit"]).groupby("material", as_index=False).agg(
         factor_tco2e_per_unit=("factor_tco2e_per_unit", "mean"), unit=("unit", "first"))
 
+def _coerce_comp(comp):
+    """Map the compliance table to framework / requirement_id / requirement / category."""
+    if comp is None:
+        return None
+    comp = comp.copy()
+    txt = [c for c in comp.columns if not pd.api.types.is_numeric_dtype(comp[c])]
+    if not txt:
+        return None
+    used, out = set(), pd.DataFrame(index=comp.index)
+    spec = {"framework": (["framework", "standard", "regulat", "body", "scheme", "ifrs", "nsrf"], []),
+            "requirement_id": (["id", "code", "ref", "clause", "paragraph"], []),
+            "requirement": (["requirement", "disclosure", "description", "criteria", "control", "title", "topic"], ["id"]),
+            "category": (["category", "pillar", "theme", "area", "type", "section"], [])}
+    for canon, (kw, ex) in spec.items():
+        col = _find(comp[[c for c in txt if c not in used]], kw, ex)
+        if col:
+            out[canon] = comp[col].astype(str); used.add(col)
+    # Fallbacks so the app never crashes on missing columns
+    if "framework" not in out:
+        out["framework"] = comp[txt[0]].astype(str) if txt else "Unspecified"
+    if "requirement" not in out:
+        rest = [c for c in txt if c not in used]
+        out["requirement"] = comp[rest[0]].astype(str) if rest else out["framework"]
+    if "category" not in out:
+        out["category"] = "General"
+    if "requirement_id" not in out:
+        out["requirement_id"] = [f"REQ-{i + 1:05d}" for i in range(len(out))]
+    # Keep any extra original columns for the audit export
+    extra = comp.drop(columns=list(used), errors="ignore")
+    return pd.concat([out, extra], axis=1)
 
 def _coerce_sc(sc):
     """Rename detected columns of the delivery-log table to the canonical schema."""
@@ -105,7 +135,7 @@ def _coerce_sc(sc):
 
 def load_data():
     """Return (supply, emission_factors, compliance, using_demo_flag)."""
-    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _read(F_COMP)
+    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _coerce_comp(_read(F_COMP))
     demo = sc is None or ef is None or comp is None
     if demo:
         d_sc, d_ef, d_comp = _demo_data()
