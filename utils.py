@@ -55,6 +55,49 @@ def _demo_data(n=400, seed=7):
         "category": ["Governance", "Strategy", "Risk", "Metrics", "Metrics", "Strategy", "Metrics", "Disclosure", "Assurance", "Value chain"]})
     return sc, ef, comp
 
+def _find(df, keywords, exclude=()):
+    """Return the first column whose name contains any keyword (None if not found)."""
+    for c in df.columns:
+        if any(k in c for k in keywords) and not any(x in c for x in exclude):
+            return c
+    return None
+
+
+def _coerce_ef(ef):
+    """Map an arbitrary emission-factor table to material / unit / factor_tco2e_per_unit."""
+    if ef is None:
+        return None
+    mat = _find(ef, ["material", "item", "product", "description", "name", "category"])
+    fac = _find(ef, ["factor", "tco2e", "co2", "emission"], exclude=["id", "source"])
+    unit = _find(ef, ["unit", "uom"])
+    if mat is None or fac is None:
+        return None
+    out = pd.DataFrame({"material": ef[mat].astype(str).str.strip(),
+                        "factor_tco2e_per_unit": pd.to_numeric(ef[fac], errors="coerce"),
+                        "unit": ef[unit].astype(str) if unit else ""})
+    # Duplicate material names are averaged so each material has one factor
+    return out.dropna(subset=["factor_tco2e_per_unit"]).groupby("material", as_index=False).agg(
+        factor_tco2e_per_unit=("factor_tco2e_per_unit", "mean"), unit=("unit", "first"))
+
+
+def _coerce_sc(sc):
+    """Rename detected columns of the delivery-log table to the canonical schema."""
+    if sc is None:
+        return None
+    guess = {"log_id": (["log", "id", "delivery", "ref"], ["vendor", "supplier"]),
+             "date": (["date", "time"], []), "township": (["township", "site", "project", "location"], []),
+             "vendor": (["vendor_name", "vendor", "supplier"], ["tier"]),
+             "vendor_tier": (["tier"], []), "material": (["material", "item", "product", "description"], []),
+             "quantity": (["quantity", "qty", "amount", "volume", "weight"], []),
+             "verification_status": (["verif", "status"], [])}
+    ren, used = {}, set()
+    for canon, (kw, ex) in guess.items():
+        if canon in sc.columns:
+            used.add(canon); continue
+        c = _find(sc[[x for x in sc.columns if x not in used]], kw, ex)
+        if c: ren[c] = canon; used.add(c)
+    sc = sc.rename(columns=ren)
+    return sc if "material" in sc.columns and "quantity" in sc.columns else None
 
 def load_data():
     """Return (supply, emission_factors, compliance, using_demo_flag)."""
