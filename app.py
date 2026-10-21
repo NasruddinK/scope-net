@@ -25,12 +25,8 @@ def card(col, value, label):
 
 
 # ---- Session state: load once, then CRUD operates on st.session_state.df ----
-@st.cache_data
-def _load():
-    return U.load_data()
-
 if "df" not in st.session_state:
-    sc, ef, comp, demo = _load()
+    sc, ef, comp, demo = U.load_data()      # was: _load()
     df = U.detect_anomalies(U.calculate_emissions(sc, ef))
     st.session_state.update(df=df, ef=ef, comp=comp, demo=demo)
 df, ef, comp = st.session_state.df, st.session_state.ef, st.session_state.comp
