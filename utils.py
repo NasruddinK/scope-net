@@ -67,15 +67,19 @@ def _coerce_ef(ef):
     """Map an arbitrary emission-factor table to material / unit / factor_tco2e_per_unit."""
     if ef is None:
         return None
-    mat = _find(ef, ["material", "item", "product", "description", "name", "category"])
-    fac = _find(ef, ["factor", "tco2e", "co2", "emission"], exclude=["id", "source"])
-    unit = _find(ef, ["unit", "uom"])
+    num = [c for c in ef.columns if pd.api.types.is_numeric_dtype(ef[c])]
+    txt = [c for c in ef.columns if c not in num]
+    # Material = best-named text column (else first text column); factor = best-named numeric column (else last)
+    mat = _find(ef[txt], ["material", "item", "product", "description", "name", "category"]) if txt else None
+    mat = mat or (txt[0] if txt else None)
+    fac = _find(ef[num], ["factor", "tco2e", "co2", "emission"], exclude=["id"]) if num else None
+    fac = fac or (num[-1] if num else None)
+    unit = _find(ef[txt], ["unit", "uom"]) if txt else None
     if mat is None or fac is None:
         return None
     out = pd.DataFrame({"material": ef[mat].astype(str).str.strip(),
                         "factor_tco2e_per_unit": pd.to_numeric(ef[fac], errors="coerce"),
                         "unit": ef[unit].astype(str) if unit else ""})
-    # Duplicate material names are averaged so each material has one factor
     return out.dropna(subset=["factor_tco2e_per_unit"]).groupby("material", as_index=False).agg(
         factor_tco2e_per_unit=("factor_tco2e_per_unit", "mean"), unit=("unit", "first"))
 
