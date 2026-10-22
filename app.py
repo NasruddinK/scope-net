@@ -58,7 +58,10 @@ with st.sidebar:
                     df, ef, township=township, vendor=vendor.strip(), vendor_tier=tier, material=material, quantity=qty, date=date))
                 st.success("Log added."); st.rerun()
 
-# ---- NAVIGATION HUB BOX (Enclosing the selector cleanly inside a styled container) ----
+# ---- GAP BETWEEN KPIS AND NAVIGATION HUB ----
+st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+
+# ---- NAVIGATION HUB BOX (With Gap & White Background) ----
 with st.container(border=True):
     st.markdown("### 🗂️ Platform Navigation Hub")
     nav_selection = st.segmented_control(
