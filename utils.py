@@ -111,7 +111,49 @@ def _coerce_sc(sc):
     """Rename detected columns of the delivery-log table to the canonical schema."""
     if sc is None:
         return None
-    return sc
+    guess = {"log_id": (["log", "id", "delivery", "ref"], ["vendor", "supplier"]),
+             "date": (["date", "time"], []), "township": (["township", "site", "project", "location"], []),
+             "vendor": (["vendor_name", "vendor", "supplier"], ["tier"]),
+             "vendor_tier": (["tier"], []), "material": (["material", "item", "product", "description"], []),
+             "quantity": (["quantity", "qty", "amount", "volume", "weight"], []),
+             "verification_status": (["verif", "status"], [])}
+    ren, used = {}, set()
+    for canon, (kw, ex) in guess.items():
+        if canon in sc.columns:
+            used.add(canon); continue
+        c = _find(sc[[x for x in sc.columns if x not in used]], kw, ex)
+        if c: ren[c] = canon; used.add(c)
+    sc = sc.rename(columns=ren)
+    return sc if "material" in sc.columns and "quantity" in sc.columns else None
+
+
+def _coerce_comp(comp):
+    """Map an arbitrary compliance table to framework / requirement_id / requirement / category."""
+    if comp is None:
+        return None
+    comp = _norm(comp)
+    guess_fw = _find(comp, ["framework", "standard", "regulation", "law", "guideline"], [])
+    guess_req = _find(comp, ["requirement", "criteria", "disclosure", "item", "description"], [])
+    guess_id = _find(comp, ["id", "code", "req_id"], [])
+    guess_cat = _find(comp, ["category", "pillar", "domain", "topic"], [])
+    
+    rename_map = {}
+    if guess_fw and guess_fw != "framework": rename_map[guess_fw] = "framework"
+    if guess_req and guess_req != "requirement": rename_map[guess_req] = "requirement"
+    if guess_id and guess_id != "requirement_id": rename_map[guess_id] = "requirement_id"
+    if guess_cat and guess_cat != "category": rename_map[guess_cat] = "category"
+    
+    comp = comp.rename(columns=rename_map)
+    if "framework" not in comp.columns:
+        comp["framework"] = "General ESG"
+    if "requirement" not in comp.columns:
+        txt_cols = [c for c in comp.columns if not pd.api.types.is_numeric_dtype(comp[c])]
+        comp["requirement"] = comp[txt_cols[0]] if txt_cols else "Requirement"
+    if "requirement_id" not in comp.columns:
+        comp["requirement_id"] = [f"REQ-{i+1:03d}" for i in range(len(comp))]
+    if "category" not in comp.columns:
+        comp["category"] = "General"
+    return comp
 
 
 def load_data():
@@ -161,6 +203,77 @@ def detect_anomalies(df: pd.DataFrame) -> pd.DataFrame:
         df["is_anomaly"] = "No"
     return df
 
+# ---------------- NLP / OCR simulation ----------------
+# Updated units: added sq.m / sqm for glass/panels and refined unit matching
+_UNITS = r"(?:tonnes?|tons?|t|kg|m3|m³|cubic\s*m(?:eters?)?|sq\.?m|square\s*m(?:eters?)?)"
+
+# Expanded synonym and keyword mapping covering all requested construction materials
+_SYN = {
+    # Cement
+    "opc": "cement", "portland": "cement", "cement": "cement",
+    # Steel / Rebar
+    "rebar": "steel rebar", "reinforcing": "steel rebar", "steel": "steel rebar", 
+    "structural steel": "steel rebar", "h-beam": "steel rebar", "coils": "steel rebar", 
+    "wire rods": "steel rebar", "wire rod": "steel rebar",
+    # Concrete
+    "readymix": "concrete", "ready-mix": "concrete", "concrete": "concrete", 
+    "conc": "concrete", "precast": "concrete", "low-carbon concrete": "concrete",
+    # Aluminium
+    "aluminum": "aluminium", "aluminium": "aluminium", "frames": "aluminium", 
+    "framing": "aluminium", "extrusions": "aluminium", "curtain panels": "aluminium",
+    # Timber / Wood
+    "wood": "timber", "timber": "timber", "lumber": "timber",
+    # Glass
+    "glass": "glass", "float glass": "glass", "security glass": "glass", 
+    "architectural glass": "glass", "double-glazed": "glass", "laminated": "glass", "tempered": "glass",
+    # Asphalt
+    "asphalt": "asphalt", "bitumen": "asphalt", "macadam": "asphalt"
+}
+
+def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
+    """Simulated OCR/NLP: regex-extract 'qty unit item' lines, normalise noise/synonyms, fuzzy-match to factors."""
+    lk, rows = factor_lookup(ef), []
+    for line in (text or "").splitlines():
+        # Match lines starting with a number, optional unit, optional connector (of/x), followed by description
+        m = re.search(rf"^\s*(\d+(?:[.,]\d+)?)\s*({_UNITS})?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
+        if not m:
+            continue
+            
+        qty = float(m.group(1).replace(",", ""))
+        unit = (m.group(2) or "").lower()
+        desc = m.group(3).strip().lower()
+        
+        # Unit normalization / conversions
+        if unit in ["kg"]: 
+            qty, unit = qty / 1000, "tonne"
+        elif any(u in unit for u in ["sq", "square"]):
+            unit = "sq.m"
+            
+        clean = re.sub(r"[^a-z\s\-]", " ", desc)
+        
+        # Check matching against synonyms
+        matched_sub = False
+        for k, v in _SYN.items():
+            if k in clean: 
+                clean = v
+                matched_sub = True
+                break
+        
+        # If no explicit synonym hit, keep core tokens for matching
+        hit = difflib.get_close_matches(clean.strip(), list(lk), n=1, cutoff=cutoff)
+        score = difflib.SequenceMatcher(None, clean.strip(), hit[0]).ratio() if hit else 0
+        f = lk.get(hit[0]) if hit else None
+        
+        rows.append({
+            "raw_line": line.strip(), 
+            "matched_material": hit[0].title() if hit else "NO MATCH",
+            "match_confidence": round(score, 2), 
+            "quantity": round(qty, 3),
+            "unit": unit,
+            "factor": f, 
+            "emissions_tco2e": round(qty * f, 3) if f else 0.0
+        })
+    return pd.DataFrame(rows)
 
 # ---------------- CRUD ----------------
 def create_record(df, ef, **f):
