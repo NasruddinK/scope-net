@@ -129,13 +129,16 @@ st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
 # ---- ACTIVE SECTION CONTENT ----
 if nav_selection == "📊 Executive Dashboard":
-    anomalies_df = v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]]
-    st.dataframe(format_display_df(anomalies_df), width='stretch', hide_index=True)
+    
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
     sel_v = c[1].multiselect("Vendor tier", sorted(df.vendor_tier.astype(str).unique()))
     sel_s = c[2].multiselect("Verification status", sorted(df.verification_status.astype(str).unique()))
     v = df
+    
+    anomalies_df = v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]]
+    st.dataframe(format_display_df(anomalies_df), width='stretch', hide_index=True)
+    
     if sel_t: v = v[v.township.isin(sel_t)]
     if sel_v: v = v[v.vendor_tier.isin(sel_v)]
     if sel_s: v = v[v.verification_status.isin(sel_s)]
@@ -162,7 +165,6 @@ if nav_selection == "📊 Executive Dashboard":
 
 elif nav_selection == "🛠️ Live CRUD Operations":
     st.dataframe(format_display_df(df), width='stretch', height=300, hide_index=True)
-    st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
     with u:
         st.subheader("✏️ Update Record")
@@ -208,7 +210,6 @@ elif nav_selection == "🛠️ Live CRUD Operations":
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
 
 elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
-    st.dataframe(format_display_df(res), width='stretch', hide_index=True)
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
     up = st.file_uploader("Invoice/BOM text file", type=["txt"])
@@ -217,18 +218,17 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
         res = U.parse_invoice_text(txt, ef)
         if res.empty: st.warning("No line items recognised.")
         else:
-            st.dataframe(res, use_container_width=True)
+            st.dataframe(format_display_df(res), width='stretch', hide_index=True)
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
-    st.dataframe(format_display_df(rep), width='stretch', hide_index=True)
     rep = U.compliance_summary(df, comp)
     if rep is not None and "framework" in rep.columns:
         fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
         rep = rep[rep.framework.isin(fw)] if fw else rep
         st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
                                      color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), width='stretch')
-        st.dataframe(rep, width='stretch')
+        st.dataframe(format_display_df(rep), width='stretch', hide_index=True)
         st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
     else:
         st.error("Compliance framework data could not be loaded.")
