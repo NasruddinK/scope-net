@@ -59,8 +59,9 @@ with st.sidebar:
 
 t1, t2, t3, t4 = st.tabs(["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"])
 
-# ---- Tab 1: READ (filters + charts) ----
+# ---- Tab 1: READ (filters + charts) wrapped in section-box ----
 with t1:
+    st.markdown('<div class="section-box">', unsafe_allow_html=True)
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
     sel_v = c[1].multiselect("Vendor tier", sorted(df.vendor_tier.astype(str).unique()))
@@ -81,9 +82,11 @@ with t1:
         st.plotly_chart(px.line(ts, x="month", y="emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), use_container_width=True)
         st.subheader("🚩 Flagged Anomalies")
         st.dataframe(v[v.is_anomaly][["log_id", "township", "vendor", "material", "quantity", "emissions_tco2e", "verification_status"]], use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---- Tab 2: UPDATE + DELETE (+ raw READ) ----
+# ---- Tab 2: UPDATE + DELETE wrapped in section-box ----
 with t2:
+    st.markdown('<div class="section-box">', unsafe_allow_html=True)
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
     with u:
@@ -106,9 +109,11 @@ with t2:
         if st.button("Delete selected", disabled=not ids):
             st.session_state.df = U.delete_records(df, ids); st.rerun()
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---- Tab 3: NLP/OCR ----
+# ---- Tab 3: NLP/OCR wrapped in section-box ----
 with t3:
+    st.markdown('<div class="section-box">', unsafe_allow_html=True)
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
     up = st.file_uploader("Invoice/BOM text file", type=["txt"])
@@ -119,9 +124,11 @@ with t3:
         else:
             st.dataframe(res, use_container_width=True)
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---- Tab 4: Compliance ----
+# ---- Tab 4: Compliance wrapped in section-box ----
 with t4:
+    st.markdown('<div class="section-box">', unsafe_allow_html=True)
     rep = U.compliance_summary(df, comp)
     fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
     rep = rep[rep.framework.isin(fw)] if fw else rep
@@ -129,6 +136,7 @@ with t4:
                                  color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), use_container_width=True)
     st.dataframe(rep, use_container_width=True)
     st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ---- Footer ----
 st.markdown('<div class="footer"><b>Disclaimer:</b> Outputs support, but do not replace, formal disclosures under IFRS S1/S2 and Malaysia\'s National Sustainability Reporting Framework (NSRF). Emission estimates rely on benchmark factors and require independent assurance before publication.<br>Built by <b>Team HUNE</b> · Sime Darby Property University Hackathon — Township of Tomorrow</div>', unsafe_allow_html=True)
