@@ -104,15 +104,6 @@ label, .stMultiSelect span {
     color: #374151 !important;
 }
 
-/* Navigation Hub Container Styling */
-div[data-testid="st.container"] {
-    background-color: #FFFFFF !important;
-    border-radius: 18px !important;
-    padding: 10px 15px !important;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.05) !important;
-    border: 1px solid #E5E7EB !important;
-}
-
 /* Footer */
 .footer {
     background: linear-gradient(135deg, #065F46 0%, #047857 100%);
