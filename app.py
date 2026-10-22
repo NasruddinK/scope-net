@@ -42,8 +42,21 @@ def format_display_df(dataframe):
         "verification_status": "Verification Status",
         "is_anomaly": "Is Anomaly",
         "matched_material": "Matched Material",
-        "matched_confidence": "Confidence Rate",
-        "raw_line": "Raw Line"
+        "match_confidence": "Confidence Rate",
+        "raw_line": "Raw Line",
+        # Compliance report columns mapping
+        "requirement_id": "Requirement ID",
+        "framework": "Framework",
+        "category": "Category",
+        "reporting_entity": "Reporting Entity",
+        "disclosure_year": "Disclosure Year",
+        "reported_emissions_tco2e": "Reported Emissions (tCO₂e)",
+        "assurance_level": "Assurance Level",
+        "audit_compliance_status": "Audit Compliance Status",
+        "penalty_risk_score": "Penalty Risk Score",
+        "requirement": "Requirement Description",
+        "status": "Status",
+        "evidence": "Evidence"
     }
     
     df_formatted = df_formatted.rename(columns=column_rename_map)
