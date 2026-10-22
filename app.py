@@ -160,9 +160,11 @@ with t3:
 # ---- Tab 4: Compliance ----
 with t4:
     rep = U.compliance_summary(df, comp)
-    fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
-    rep = rep[rep.framework.isin(fw)] if fw else rep
-    st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
+    fw_col = "framework" if "framework" in rep.columns else rep.columns[0]
+    fw_options = sorted(rep[fw_col].astype(str).unique())
+    fw = st.multiselect("Framework", fw_options, default=fw_options)
+    rep = rep[rep[fw_col].isin(fw)] if fw else rep
+    st.plotly_chart(px.histogram(rep, x=fw_col, color="status", barmode="group",
                                  color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), use_container_width=True)
     st.dataframe(rep, use_container_width=True)
     st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
