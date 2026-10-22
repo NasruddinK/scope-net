@@ -55,10 +55,86 @@ def _demo_data(n=400, seed=7):
         "category": ["Governance", "Strategy", "Risk", "Metrics", "Metrics", "Strategy", "Metrics", "Disclosure", "Assurance", "Value chain"]})
     return sc, ef, comp
 
+def _find(df, keywords, exclude=()):
+    """Return the first column whose name contains any keyword (None if not found)."""
+    for c in df.columns:
+        if any(k in c for k in keywords) and not any(x in c for x in exclude):
+            return c
+    return None
+
+
+def _coerce_ef(ef):
+    """Map an arbitrary emission-factor table to material / unit / factor_tco2e_per_unit."""
+    if ef is None:
+        return None
+    num = [c for c in ef.columns if pd.api.types.is_numeric_dtype(ef[c])]
+    txt = [c for c in ef.columns if c not in num]
+    mat = _find(ef[txt], ["material", "item", "product", "description", "name", "category"]) if txt else None
+    mat = mat or (txt[0] if txt else None)
+    fac = _find(ef[num], ["factor", "tco2e", "co2", "emission"], exclude=["id"]) if num else None
+    fac = fac or (num[-1] if num else None)
+    unit = _find(ef[txt], ["unit", "uom"]) if txt else None
+    if mat is None or fac is None:
+        return None
+    out = pd.DataFrame({"material": ef[mat].astype(str).str.strip(),
+                        "factor_tco2e_per_unit": pd.to_numeric(ef[fac], errors="coerce"),
+                        "unit": ef[unit].astype(str) if unit else ""})
+    return out.dropna(subset=["factor_tco2e_per_unit"]).groupby("material", as_index=False).agg(
+        factor_tco2e_per_unit=("factor_tco2e_per_unit", "mean"), unit=("unit", "first"))
+
+
+def _coerce_sc(sc):
+    """Rename detected columns of the delivery-log table to the canonical schema."""
+    if sc is None:
+        return None
+    guess = {"log_id": (["log", "id", "delivery", "ref"], ["vendor", "supplier"]),
+             "date": (["date", "time"], []), "township": (["township", "site", "project", "location"], []),
+             "vendor": (["vendor_name", "vendor", "supplier"], ["tier"]),
+             "vendor_tier": (["tier"], []), "material": (["material", "item", "product", "description"], []),
+             "quantity": (["quantity", "qty", "amount", "volume", "weight"], []),
+             "verification_status": (["verif", "status"], [])}
+    ren, used = {}, set()
+    for canon, (kw, ex) in guess.items():
+        if canon in sc.columns:
+            used.add(canon); continue
+        c = _find(sc[[x for x in sc.columns if x not in used]], kw, ex)
+        if c: ren[c] = canon; used.add(c)
+    sc = sc.rename(columns=ren)
+    return sc if "material" in sc.columns and "quantity" in sc.columns else None
+
+
+def _coerce_comp(comp):
+    """Map an arbitrary compliance table to framework / requirement_id / requirement / category."""
+    if comp is None:
+        return None
+    comp = _norm(comp)
+    guess_fw = _find(comp, ["framework", "standard", "regulation", "law", "guideline"], [])
+    guess_req = _find(comp, ["requirement", "criteria", "disclosure", "item", "description"], [])
+    guess_id = _find(comp, ["id", "code", "req_id"], [])
+    guess_cat = _find(comp, ["category", "pillar", "domain", "topic"], [])
+    
+    rename_map = {}
+    if guess_fw and guess_fw != "framework": rename_map[guess_fw] = "framework"
+    if guess_req and guess_req != "requirement": rename_map[guess_req] = "requirement"
+    if guess_id and guess_id != "requirement_id": rename_map[guess_id] = "requirement_id"
+    if guess_cat and guess_cat != "category": rename_map[guess_cat] = "category"
+    
+    comp = comp.rename(columns=rename_map)
+    if "framework" not in comp.columns:
+        comp["framework"] = "General ESG"
+    if "requirement" not in comp.columns:
+        txt_cols = [c for c in comp.columns if not pd.api.types.is_numeric_dtype(comp[c])]
+        comp["requirement"] = comp[txt_cols[0]] if txt_cols else "Requirement"
+    if "requirement_id" not in comp.columns:
+        comp["requirement_id"] = [f"REQ-{i+1:03d}" for i in range(len(comp))]
+    if "category" not in comp.columns:
+        comp["category"] = "General"
+    return comp
+
 
 def load_data():
     """Return (supply, emission_factors, compliance, using_demo_flag)."""
-    sc, ef, comp = _read(F_SUPPLY), _read(F_EF), _read(F_COMP)
+    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _coerce_comp(_read(F_COMP))
     demo = sc is None or ef is None or comp is None
     if demo:
         d_sc, d_ef, d_comp = _demo_data()
