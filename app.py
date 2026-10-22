@@ -54,7 +54,7 @@ def format_display_df(dataframe):
         "reported_emissions_tco2e": "Reported Emissions (tCO₂e)",
         "assurance_level": "Assurance Level",
         "audit_compliance_status": "Audit Compliance Status",
-        "penalty_risk_score": "Penalty Risk Score
+        "penalty_risk_score": "Penalty Risk Score"
     }
     
     df_formatted = df_formatted.rename(columns=column_rename_map)
