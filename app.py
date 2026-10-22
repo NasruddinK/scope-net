@@ -71,6 +71,9 @@ nav_selection = st.radio(
 
 st.markdown("<hr style='margin: 15px 0; border: none; border-top: 1px solid #E5E7EB;'>", unsafe_allow_html=True)
 
+# Close the section container box div cleanly
+st.markdown('</div>', unsafe_allow_html=True)
+
 # ---- Tab 1 / Section 1: Executive Dashboard ----
 if nav_selection == "📊 Executive Dashboard":
     c = st.columns(3)
@@ -142,8 +145,7 @@ elif nav_selection == "📑 Audit Compliance Reports":
     st.dataframe(rep, use_container_width=True)
     st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
 
-# Close the section container box div cleanly
-st.markdown('</div>', unsafe_allow_html=True)
+
 
 # ---- Footer ----
 st.markdown('<div class="footer"><b>Disclaimer:</b> Outputs support, but do not replace, formal disclosures under IFRS S1/S2 and Malaysia\'s National Sustainability Reporting Framework (NSRF). Emission estimates rely on benchmark factors and require independent assurance before publication.<br>Built by <b>Team HUNE</b> · Sime Darby Property University Hackathon — Township of Tomorrow</div>', unsafe_allow_html=True)
