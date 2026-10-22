@@ -129,6 +129,8 @@ st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
 # ---- ACTIVE SECTION CONTENT ----
 if nav_selection == "📊 Executive Dashboard":
+    anomalies_df = v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]]
+    st.dataframe(format_display_df(anomalies_df), width='stretch', hide_index=True)
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
     sel_v = c[1].multiselect("Vendor tier", sorted(df.vendor_tier.astype(str).unique()))
@@ -159,6 +161,7 @@ if nav_selection == "📊 Executive Dashboard":
         st.dataframe(v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]], use_container_width=True)
 
 elif nav_selection == "🛠️ Live CRUD Operations":
+    st.dataframe(format_display_df(df), width='stretch', height=300, hide_index=True)
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
     with u:
@@ -205,6 +208,7 @@ elif nav_selection == "🛠️ Live CRUD Operations":
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
 
 elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
+    st.dataframe(format_display_df(res), width='stretch', hide_index=True)
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
     up = st.file_uploader("Invoice/BOM text file", type=["txt"])
@@ -217,6 +221,7 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
+    st.dataframe(format_display_df(rep), width='stretch', hide_index=True)
     rep = U.compliance_summary(df, comp)
     if rep is not None and "framework" in rep.columns:
         fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
