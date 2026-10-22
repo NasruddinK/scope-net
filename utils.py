@@ -331,18 +331,14 @@ def delete_records(df, ids):
 
 
 # ---------------- Compliance ----------------
-def compliance_summary(df, comp):
-    """Map platform capabilities onto each framework requirement."""
-    total = max(len(df), 1)
-    ver = (df["verification_status"] == "Verified").mean() if len(df) and "verification_status" in df else 0
-    cov = (df["factor_tco2e_per_unit"] > 0).mean() if "factor_tco2e_per_unit" in df and len(df) else 0
-    out = comp.copy()
-    def status(r):
-        txt = f"{r.get('requirement','')} {r.get('category','')}".lower()
-        if "assur" in txt or "verif" in txt: s = ver
-        elif "scope 3" in txt or "metric" in txt or "ghg" in txt or "value chain" in txt: s = cov
-        else: s = (ver + cov) / 2
-        return "Aligned" if s >= .8 else "Partial" if s >= .5 else "Gap"
-    out["status"] = out.apply(status, axis=1)
-    out["evidence"] = f"{ver:.0%} records verified; {cov:.0%} emission-factor coverage over {total:,} logs"
-    return out
+comp = pd.DataFrame({
+        "compliance_id": [f"CMP-2026-{i:05d}" for i in range(70000, 70010)],
+        "reporting_framework": ["IFRS S1", "IFRS S2", "NSRF", "IFRS S2", "NSRF", "IFRS S1", "IFRS S2", "NSRF", "IFRS S1", "IFRS S2"],
+        "disclosure_category": ["Scope 3 Category 1", "Scope 3 Category 1", "Scope 3 Category 2", "Scope 3 Category 1", "Scope 3 Category 2", "Scope 3 Category 5", "Scope 3 Category 1", "Scope 3 Category 1", "Scope 3 Category 6", "Scope 3 Category 9"],
+        "reporting_entity": ["Serenia City Project Office", "Bandar Ainsdale Unit", "Elmina Township", "Serenia City Project Office", "Bandar Ainsdale Unit", "Serenia City Project Office", "Sime Darby Property", "Bandar Ainsdale Unit", "Serenia City Project Office", "Sime Darby Property"],
+        "disclosure_year": [2025, 2026, 2026, 2026, 2026, 2025, 2026, 2026, 2025, 2026],
+        "reported_emissions_tco2e": [1502.6, 2375.8, 2270.2, 904.2, 273.7, 1491.4, 1771.2, 1890.5, 753.6, 1466.5],
+        "assurance_level": ["Limited Assurance", "Reasonable Assurance", "Internal Review", "Limited Assurance", "Limited Assurance", "Limited Assurance", "Internal Review", "Limited Assurance", "Reasonable Assurance", "Internal Review"],
+        "audit_compliance_status": ["Compliant", "Non-Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant"],
+        "penalty_risk_score": [0.0, 9.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    })
