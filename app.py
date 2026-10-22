@@ -42,6 +42,7 @@ def format_display_df(dataframe):
         "verification_status": "Verification Status",
         "is_anomaly": "Is Anomaly",
         "matched_material": "Matched Material",
+        "matched_confidence": "Confidence Rate",
         "raw_line": "Raw Line"
     }
     
