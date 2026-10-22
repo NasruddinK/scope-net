@@ -56,7 +56,7 @@ with st.sidebar:
         material_description = st.text_input("Material description", placeholder="e.g. OPC Portland Cement Bulk")
         
         qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0, format="%.2f")
-        unit = st.text_input("Unit", value="m2", placeholder="e.g. m2, Tons")
+        unit = st.selectbox("Unit", ["Tons", "Cubic Meters", "Square Meters"], index=2)
         
         # Date and Time inputs for timestamp
         c_date, c_time = st.columns(2)
