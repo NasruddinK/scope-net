@@ -165,7 +165,6 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
-    elif nav_selection == "📑 Audit Compliance Reports":
     rep = U.compliance_summary(df, comp)
     if rep is not None and "framework" in rep.columns:
         fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
