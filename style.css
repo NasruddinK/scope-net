@@ -7,7 +7,7 @@ html, body, [class*="css"] {
 }
 
 .stApp {
-    background: #F0FDF4; /* Fresh, eco-vibrant light green tint */
+    background: #F0FDF4;
 }
 
 /* Vibrant & Glossy Banner */
@@ -67,6 +67,16 @@ html, body, [class*="css"] {
     letter-spacing: 0.8px;
 }
 
+/* Section Box Container wrapping each tab's content */
+.section-box {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 30px 32px;
+    margin-top: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    border: 1px solid #E5E7EB;
+}
+
 /* Interactive Buttons */
 .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
     background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
@@ -83,9 +93,6 @@ html, body, [class*="css"] {
     transform: translateY(-2px) !important;
     box-shadow: 0 8px 20px rgba(16, 185, 129, 0.45) !important;
     background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
-}
-.stButton > button:active {
-    transform: translateY(1px) !important;
 }
 
 /* Form inputs with interactive focus glow */
@@ -113,15 +120,10 @@ label, .stMultiSelect span {
     font-size: 1.15rem !important;
     background-color: rgba(16, 185, 129, 0.08);
     border-radius: 10px 10px 0 0;
-    transition: all 0.2s ease;
 }
 .stTabs [aria-selected="false"] {
     font-size: 1.1rem !important;
     font-weight: 500 !important;
-    transition: all 0.2s ease;
-}
-.stTabs [aria-selected="false"]:hover {
-    color: #047857 !important;
 }
 
 /* Footer */
