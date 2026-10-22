@@ -277,21 +277,38 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
 
 # ---------------- CRUD ----------------
 def create_record(df, ef, **f):
-    """Append a new delivery log."""
+    """Append a new delivery log with auto-calculated factor and emissions."""
     nid = f"LOG-{len(df) + 1:05d}"
     while nid in set(df["log_id"]): nid = f"LOG-{np.random.randint(10**5, 10**6)}"
+    
+    mat = f["material"]
+    qty = float(f["quantity"])
+    
+    # Auto-lookup factor from emission factors table
+    lk = factor_lookup(ef)
+    factor = lk.get(str(mat).lower(), 0.0)
+    total_emissions = round(qty * factor, 3)
+    
+    # Combine date and time into a formatted string
+    date_obj = f.get("date")
+    time_obj = f.get("time")
+    if date_obj and time_obj:
+        dt_str = f"{date_obj.strftime('%d/%m/%Y')} {time_obj.strftime('%H:%M')}"
+    else:
+        dt_str = pd.Timestamp.today().strftime('%d/%m/%Y %H:%M')
+
     row = pd.DataFrame([{
         "log_id": nid, 
-        "date": pd.to_datetime(f.get("date")), 
+        "date": dt_str, 
         "township": f["township"],
         "vendor": f["vendor"], 
         "vendor_tier": f["vendor_tier"], 
-        "material": f["material"],
+        "material": mat,
         "material_description": f.get("material_description", ""),
-        "quantity": float(f["quantity"]), 
+        "quantity": qty, 
         "unit": f.get("unit", "m2"),
-        "factor_tco2e_per_unit": float(f.get("factor_tco2e_per_unit", 0.0)),
-        "total_emissions_tco2e": float(f["quantity"]) * float(f.get("factor_tco2e_per_unit", 0.0)),
+        "factor_tco2e_per_unit": float(factor),
+        "total_emissions_tco2e": float(total_emissions),
         "verification_status": f.get("verification_status", "Pending Review"),
         "is_anomaly": "Yes" if "flagged" in str(f.get("verification_status", "")).lower() else "No"
     }])
