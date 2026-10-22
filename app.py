@@ -43,33 +43,40 @@ card(k[3], f"{int(df.is_anomaly.sum())}", "ML Anomalies")
 with st.sidebar:
     st.header("➕ Submit Delivery Log")
     with st.form("create", clear_on_submit=True):
+        vendor = st.text_input("Vendor", placeholder="e.g. YTL Cement Berhad")
+        vendor_tier = st.selectbox("Vendor tier", ["Choose Tier", "Tier 1 - Direct", "Tier 2 - Upstream"])
         township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
-        vendor = st.text_input("Vendor")
-        tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
-        mats = sorted(ef.material.astype(str).unique())
-        material = st.selectbox("Material", mats)
-        material_description = st.text_input("Material Description")
-        qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0)
-        unit = st.text_input("Unit", value="m2")
-        
-        # Pull default factor based on selected material
-        default_fac = float(ef[ef.material == material]["factor_tco2e_per_unit"].values[0]) if material in ef.material.values else 0.5
-        factor_tco2e_per_unit = st.number_input("Factor (tCO₂e per unit)", min_value=0.0, value=default_fac, step=0.01)
-        
-        is_anomaly_input = st.selectbox("Is Anomaly (y/n)", ["n", "y"])
+        material = st.selectbox("Material", sorted(ef.material.astype(str).unique()))
+        material_description = st.text_input("Material description", placeholder="e.g. Ready-Mix Concrete Grade 40")
+        qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0, format="%.2f")
+        unit = st.text_input("Unit", value="m2", placeholder="e.g. m2")
+        factor = st.number_input("Factor (tCO₂e per unit)", min_value=0.0, step=0.01, format="%.4f")
         date = st.date_input("Delivery date")
         
         if st.form_submit_button("Submit & calculate"):
             if not vendor.strip() or qty <= 0:
-                st.error("Vendor and a positive quantity are required.")
+                st.error("Vendor name and a positive quantity are required.")
             else:
-                st.session_state.df = U.detect_anomalies(U.create_record(
-                    df, ef, township=township, vendor=vendor.strip(), vendor_tier=tier, 
-                    material=material, material_description=material_description.strip(), 
-                    quantity=qty, unit=unit.strip(), factor_tco2e_per_unit=factor_tco2e_per_unit,
-                    is_anomaly=is_anomaly_input, date=date))
-                st.success("Log added successfully.")
-                st.rerun()
+                # Custom creation logic incorporating all fields
+                new_id = f"LOG-{len(df) + 1:05d}"
+                calc_emissions = round(qty * factor, 3) if factor > 0 else 0.0
+                new_row = pd.DataFrame([{
+                    "log_id": new_id,
+                    "date": pd.to_datetime(date),
+                    "township": township,
+                    "vendor": vendor.strip(),
+                    "vendor_tier": vendor_tier,
+                    "material": material,
+                    "material_description": material_description.strip(),
+                    "quantity": qty,
+                    "unit": unit,
+                    "factor_tco2e_per_unit": factor,
+                    "total_emissions_tco2e": calc_emissions,
+                    "is_anomaly": "No",
+                    "verification_status": "Pending"
+                }])
+                st.session_state.df = pd.concat([df, new_row], ignore_index=True)
+                st.success("Delivery log added successfully!"); st.rerun()
 
 # ---- GAP BETWEEN KPIS AND NAVIGATION HUB ----
 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
@@ -110,45 +117,51 @@ if nav_selection == "📊 Executive Dashboard":
 
 # ---- Tab 2: UPDATE + DELETE (+ raw READ) ----
 elif nav_selection == "🛠️ Live CRUD Operations":
-    st.subheader("🛠️ Live CRUD Operations (Full Field Control)")
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
     with u:
         st.subheader("✏️ Update Record")
         if df.empty: 
-            st.caption("No records.")
+            st.caption("No records available.")
         else:
-            lid = st.selectbox("Select log ID", df.log_id, key="upd")
+            lid = st.selectbox("Select log ID to update", df.log_id, key="upd")
             r = df[df.log_id == lid].iloc[0]
             with st.form("update"):
-                nvendor = st.text_input("vendor", value=str(r.get("vendor", "")))
-                ntier = st.selectbox("vendor_tier", ["Tier 1 - Direct", "Tier 2 - Upstream"], index=0 if r.get("vendor_tier")=="Tier 1 - Direct" else 1)
-                ntownship = st.selectbox("township", sorted(set(U.TOWNSHIPS) | {r.get("township")}))
-                nmat = st.selectbox("material", sorted(ef.material.astype(str).unique()), index=0)
-                nmat_desc = st.text_input("material_description", value=str(r.get("material_description", "")))
-                nq = st.number_input("quantity (square meter)", min_value=0.0, value=float(r.get("quantity", 0.0)))
-                nunit = st.text_input("unit", value=str(r.get("unit", "m2")))
-                nfac = st.number_input("factor_tco2e_per_unit", min_value=0.0, value=float(r.get("factor_tco2e_per_unit", 0.5)))
+                up_vendor = st.text_input("Vendor", value=str(r.get("vendor", "")), placeholder="Enter vendor name")
+                up_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream", "Tier 3"], 
+                                       index=0 if r.get("vendor_tier") not in ["Tier 2 - Upstream", "Tier 3"] else (1 if r.get("vendor_tier") == "Tier 2 - Upstream" else 2))
+                up_township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))),
+                                          index=0 if r.get("township") not in U.TOWNSHIPS else U.TOWNSHIPS.index(r.get("township")))
+                up_material = st.text_input("Material", value=str(r.get("material", "")), placeholder="Enter material type")
+                up_desc = st.text_input("Material description", value=str(r.get("material_description", "")), placeholder="Enter detailed description")
+                up_qty = st.number_input("Quantity (square meter)", min_value=0.0, value=float(r.get("quantity", 0.0)), step=1.0)
+                up_unit = st.text_input("Unit", value=str(r.get("unit", "m2")), placeholder="e.g. m2")
+                up_factor = st.number_input("Factor (tCO₂e per unit)", min_value=0.0, value=float(r.get("factor_tco2e_per_unit", 0.0)), step=0.01)
+                up_emissions = st.number_input("Total emissions (tCO₂e)", min_value=0.0, value=float(r.get("total_emissions_tco2e", 0.0)), step=0.1)
                 
-                cur_anom = "y" if r.get("is_anomaly", False) else "n"
-                nis_anom = st.selectbox("is_anomaly (y/n)", ["n", "y"], index=0 if cur_anom=="n" else 1)
+                anomaly_val = str(r.get("is_anomaly", "No"))
+                up_anomaly = st.selectbox("Is anomaly", ["No", "Yes"], index=0 if anomaly_val.lower() in ["no", "false", "0"] else 1)
                 
                 if st.form_submit_button("Save changes"):
-                    st.session_state.df = U.update_record(
-                        df, ef, lid, 
-                        vendor=nvendor, vendor_tier=ntier, township=ntownship,
-                        material=nmat, material_description=nmat_desc, quantity=nq,
-                        unit=nunit, factor_tco2e_per_unit=nfac, is_anomaly=nis_anom
-                    )
-                    st.success(f"Record {lid} updated successfully.")
-                    st.rerun()
+                    idx = df.index[df.log_id == lid]
+                    df.loc[idx, "vendor"] = up_vendor.strip()
+                    df.loc[idx, "vendor_tier"] = up_tier
+                    df.loc[idx, "township"] = up_township
+                    df.loc[idx, "material"] = up_material.strip()
+                    df.loc[idx, "material_description"] = up_desc.strip()
+                    df.loc[idx, "quantity"] = up_qty
+                    df.loc[idx, "unit"] = up_unit.strip()
+                    df.loc[idx, "factor_tco2e_per_unit"] = up_factor
+                    df.loc[idx, "total_emissions_tco2e"] = up_emissions
+                    df.loc[idx, "is_anomaly"] = up_anomaly
+                    st.session_state.df = df
+                    st.success(f"Record {lid} updated successfully!"); st.rerun()
+                    
     with d:
         st.subheader("🗑️ Delete Records")
         ids = st.multiselect("Select erroneous/duplicate logs", df.log_id)
         if st.button("Delete selected", disabled=not ids):
-            st.session_state.df = U.delete_records(df, ids)
-            st.success("Selected records deleted.")
-            st.rerun()
+            st.session_state.df = U.delete_records(df, ids); st.rerun()
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
 
 # ---- Tab 3: NLP/OCR ----
