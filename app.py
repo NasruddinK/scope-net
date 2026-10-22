@@ -62,14 +62,14 @@ with st.sidebar:
 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
 
 # ---- NAVIGATION HUB BOX (With Gap & White Background) ----
-
-st.markdown("### 🗂️ Platform Navigation Hub")
-nav_selection = st.segmented_control(
-    "Select a section to view:",
-    ["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"],
-    default="📊 Executive Dashboard",
-    label_visibility="collapsed"
-)
+with st.container(border=True):
+    st.markdown("### 🗂️ Platform Navigation Hub")
+    nav_selection = st.segmented_control(
+        "Select a section to view:",
+        ["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"],
+        default="📊 Executive Dashboard",
+        label_visibility="collapsed"
+    )
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
