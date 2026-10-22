@@ -37,9 +37,12 @@ def format_display_df(dataframe):
         "quantity": "Quantity",
         "unit": "Unit",
         "factor_tco2e_per_unit": "Emission Factor (tCO₂e/Unit)",
+        "factor": "Emission Factor (tCO₂e/Unit)",
         "total_emissions_tco2e": "Total Emissions (tCO₂e)",
         "verification_status": "Verification Status",
-        "is_anomaly": "Is Anomaly"
+        "is_anomaly": "Is Anomaly",
+        "matched_material": "Matched Material",
+        "raw_line": "Raw Line"
     }
     
     df_formatted = df_formatted.rename(columns=column_rename_map)
