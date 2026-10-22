@@ -341,4 +341,37 @@ def update_record(df, ef, log_id, **changes):
 
 def delete_records(df, ids):
     """Remove rows by log_id."""
+
+# ---------------- Compliance CRUD ----------------
+def create_compliance_record(comp_df, **f):
+    """Append a new compliance record."""
+    nid = f"CMP-2026-{len(comp_df) + 1:05d}"
+    while nid in set(comp_df["compliance_id"]): 
+        nid = f"CMP-2026-{np.random.randint(10**5, 10**6)}"
+        
+    row = pd.DataFrame([{
+        "compliance_id": nid,
+        "reporting_framework": f.get("reporting_framework", "IFRS S2 (Climate-related Disclosures)"),
+        "disclosure_category": f.get("disclosure_category", "Scope 3 Category 1: Purchased Goods & Services"),
+        "reporting_entity": f.get("reporting_entity", "Sime Darby Property Berhad"),
+        "disclosure_year": int(f.get("disclosure_year", 2026)),
+        "reported_emissions_tco2e": float(f.get("reported_emissions_tco2e", 0.0)),
+        "assurance_level": f.get("assurance_level", "Limited Assurance"),
+        "audit_compliance_status": f.get("audit_compliance_status", "Compliant"),
+        "penalty_risk_score": float(f.get("penalty_risk_score", 0.0))
+    }])
+    return pd.concat([comp_df, row], ignore_index=True)
+
+def update_compliance_record(comp_df, compliance_id, **f):
+    """Update an existing compliance record."""
+    idx = comp_df[comp_df["compliance_id"] == compliance_id].index
+    if not idx.empty:
+        for k, v in f.items():
+            if k in comp_df.columns:
+                comp_df.loc[idx, k] = v
+    return comp_df
+
+def delete_compliance_record(comp_df, compliance_id):
+    """Delete a compliance record by ID."""
+    return comp_df[comp_df["compliance_id"] != compliance_id].reset_index(drop=True)
     return df[~df["log_id"].isin(ids)].reset_index(drop=True)
