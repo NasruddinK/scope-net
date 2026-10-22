@@ -55,86 +55,10 @@ def _demo_data(n=400, seed=7):
         "category": ["Governance", "Strategy", "Risk", "Metrics", "Metrics", "Strategy", "Metrics", "Disclosure", "Assurance", "Value chain"]})
     return sc, ef, comp
 
-def _find(df, keywords, exclude=()):
-    """Return the first column whose name contains any keyword (None if not found)."""
-    for c in df.columns:
-        if any(k in c for k in keywords) and not any(x in c for x in exclude):
-            return c
-    return None
-
-
-def _coerce_ef(ef):
-    """Map an arbitrary emission-factor table to material / unit / factor_tco2e_per_unit."""
-    if ef is None:
-        return None
-    num = [c for c in ef.columns if pd.api.types.is_numeric_dtype(ef[c])]
-    txt = [c for c in ef.columns if c not in num]
-    mat = _find(ef[txt], ["material", "item", "product", "description", "name", "category"]) if txt else None
-    mat = mat or (txt[0] if txt else None)
-    fac = _find(ef[num], ["factor", "tco2e", "co2", "emission"], exclude=["id"]) if num else None
-    fac = fac or (num[-1] if num else None)
-    unit = _find(ef[txt], ["unit", "uom"]) if txt else None
-    if mat is None or fac is None:
-        return None
-    out = pd.DataFrame({"material": ef[mat].astype(str).str.strip(),
-                        "factor_tco2e_per_unit": pd.to_numeric(ef[fac], errors="coerce"),
-                        "unit": ef[unit].astype(str) if unit else ""})
-    return out.dropna(subset=["factor_tco2e_per_unit"]).groupby("material", as_index=False).agg(
-        factor_tco2e_per_unit=("factor_tco2e_per_unit", "mean"), unit=("unit", "first"))
-
-
-def _coerce_sc(sc):
-    """Rename detected columns of the delivery-log table to the canonical schema."""
-    if sc is None:
-        return None
-    guess = {"log_id": (["log", "id", "delivery", "ref"], ["vendor", "supplier"]),
-             "date": (["date", "time"], []), "township": (["township", "site", "project", "location"], []),
-             "vendor": (["vendor_name", "vendor", "supplier"], ["tier"]),
-             "vendor_tier": (["tier"], []), "material": (["material", "item", "product", "description"], []),
-             "quantity": (["quantity", "qty", "amount", "volume", "weight"], []),
-             "verification_status": (["verif", "status"], [])}
-    ren, used = {}, set()
-    for canon, (kw, ex) in guess.items():
-        if canon in sc.columns:
-            used.add(canon); continue
-        c = _find(sc[[x for x in sc.columns if x not in used]], kw, ex)
-        if c: ren[c] = canon; used.add(c)
-    sc = sc.rename(columns=ren)
-    return sc if "material" in sc.columns and "quantity" in sc.columns else None
-
-
-def _coerce_comp(comp):
-    """Map an arbitrary compliance table to framework / requirement_id / requirement / category."""
-    if comp is None:
-        return None
-    comp = _norm(comp)
-    guess_fw = _find(comp, ["framework", "standard", "regulation", "law", "guideline"], [])
-    guess_req = _find(comp, ["requirement", "criteria", "disclosure", "item", "description"], [])
-    guess_id = _find(comp, ["id", "code", "req_id"], [])
-    guess_cat = _find(comp, ["category", "pillar", "domain", "topic"], [])
-    
-    rename_map = {}
-    if guess_fw and guess_fw != "framework": rename_map[guess_fw] = "framework"
-    if guess_req and guess_req != "requirement": rename_map[guess_req] = "requirement"
-    if guess_id and guess_id != "requirement_id": rename_map[guess_id] = "requirement_id"
-    if guess_cat and guess_cat != "category": rename_map[guess_cat] = "category"
-    
-    comp = comp.rename(columns=rename_map)
-    if "framework" not in comp.columns:
-        comp["framework"] = "General ESG"
-    if "requirement" not in comp.columns:
-        txt_cols = [c for c in comp.columns if not pd.api.types.is_numeric_dtype(comp[c])]
-        comp["requirement"] = comp[txt_cols[0]] if txt_cols else "Requirement"
-    if "requirement_id" not in comp.columns:
-        comp["requirement_id"] = [f"REQ-{i+1:03d}" for i in range(len(comp))]
-    if "category" not in comp.columns:
-        comp["category"] = "General"
-    return comp
-
 
 def load_data():
     """Return (supply, emission_factors, compliance, using_demo_flag)."""
-    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _coerce_comp(_read(F_COMP))
+    sc, ef, comp = _read(F_SUPPLY), _read(F_EF), _read(F_COMP)
     demo = sc is None or ef is None or comp is None
     if demo:
         d_sc, d_ef, d_comp = _demo_data()
@@ -178,76 +102,30 @@ def detect_anomalies(df: pd.DataFrame, contamination=0.03) -> pd.DataFrame:
     return df
 
 
-# ---------------- NLP / OCR pipeline ----------------
-_UNITS = r"(tonnes?|tons?|t|kg|g|m3|m³|cubic\s*m(?:eters?)?)"
-_SYN = {
-    "opc": "cement", "portland": "cement", "cement": "cement",
-    "rebar": "steel rebar", "reinforcing": "steel rebar", "steel": "steel rebar",
-    "readymix": "concrete", "ready-mix": "concrete", "conc": "concrete", "concrete": "concrete",
-    "timber": "timber", "wood": "timber",
-    "glass": "glass",
-    "aluminium": "aluminium", "aluminum": "aluminium", "alumnium": "aluminium",
-    "bricks": "bricks", "brick": "bricks",
-    "asphalt": "asphalt"
-}
+# ---------------- NLP / OCR simulation ----------------
+_UNITS = r"(tonnes?|tons?|t|kg|m3|m³|cubic\s*m(?:eters?)?)"
+_SYN = {"opc": "cement", "portland": "cement", "rebar": "steel rebar", "reinforcing": "steel rebar",
+        "readymix": "concrete", "ready-mix": "concrete", "aluminum": "aluminium", "wood": "timber"}
 
 
-def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
-    """Advanced OCR/NLP parser: regex-extract quantities, units, and descriptions, resolving synonyms, typos, and fuzzy matches."""
+def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.5) -> pd.DataFrame:
+    """Simulated OCR/NLP: regex-extract 'qty unit item' lines, normalise noise/synonyms, fuzzy-match to factors."""
     lk, rows = factor_lookup(ef), []
     for line in (text or "").splitlines():
-        if not line.strip() or line.strip().startswith("#") or line.strip().lower().startswith("invoice"):
-            continue
-        
         m = re.search(rf"(\d+(?:[.,]\d+)?)\s*{_UNITS}?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
         if not m:
-            m2 = re.search(rf"(\d+(?:[.,]\d+)?)\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
-            if not m2:
-                continue
-            qty, unit, desc = float(m2.group(1).replace(",", "")), "", m2.group(2).strip().lower()
-        else:
-            qty, unit, desc = float(m.group(1).replace(",", "")), (m.group(2) or "").lower(), m.group(3).strip().lower()
-
-        if unit in ("kg", "g"): 
-            qty, unit = (qty / 1000 if unit == "kg" else qty / 1000000), "tonne"
-        
-        clean = re.sub(r"[^a-z\s\-]", " ", desc).strip()
-        
-        matched_mat = None
+            continue
+        qty, unit, desc = float(m.group(1).replace(",", "")), (m.group(2) or "").lower(), m.group(3).strip().lower()
+        if unit == "kg": qty, unit = qty / 1000, "tonne"
+        clean = re.sub(r"[^a-z\s\-]", " ", desc)
         for k, v in _SYN.items():
-            if k in clean or any(k == w for w in clean.split()):
-                matched_mat = v
-                break
-        
-        score = 1.0
-        if not matched_mat:
-            words = clean.split()
-            best_match, best_score = None, 0.0
-            for w in words:
-                hits = difflib.get_close_matches(w, list(lk), n=1, cutoff=0.6)
-                if hits:
-                    best_match, best_score = hits[0], 0.75
-                    break
-            if not best_match:
-                hits = difflib.get_close_matches(clean, list(lk), n=1, cutoff=cutoff)
-                if hits:
-                    best_match = hits[0]
-                    best_score = round(difflib.SequenceMatcher(None, clean, best_match).ratio(), 2)
-                else:
-                    best_score = 0.0
-            matched_mat = best_match
-            score = best_score
-
-        f = lk.get(matched_mat.lower()) if matched_mat and matched_mat.lower() in lk else None
-        rows.append({
-            "raw_line": line.strip(),
-            "matched_material": matched_mat.title() if (matched_mat and matched_mat.lower() in lk) else "NO MATCH",
-            "match_confidence": score,
-            "quantity": round(qty, 3),
-            "unit": unit if unit else "tonne",
-            "factor": f,
-            "emissions_tco2e": round(qty * f, 3) if f else 0.0
-        })
+            if k in clean: clean = v; break
+        hit = difflib.get_close_matches(clean.strip(), list(lk), n=1, cutoff=cutoff)
+        score = difflib.SequenceMatcher(None, clean.strip(), hit[0]).ratio() if hit else 0
+        f = lk.get(hit[0]) if hit else None
+        rows.append({"raw_line": line.strip(), "matched_material": hit[0].title() if hit else "NO MATCH",
+                     "match_confidence": round(score, 2), "quantity": round(qty, 3),
+                     "factor": f, "emissions_tco2e": round(qty * f, 3) if f else 0.0})
     return pd.DataFrame(rows)
 
 
