@@ -114,18 +114,34 @@ elif nav_selection == "🛠️ Live CRUD Operations":
     u, d = st.columns(2)
     with u:
         st.subheader("✏️ Update Record")
-        if df.empty: st.caption("No records.")
+        if df.empty: 
+            st.caption("No records.")
         else:
             lid = st.selectbox("Select log ID", df.log_id, key="upd")
             r = df[df.log_id == lid].iloc[0]
             with st.form("update"):
-                nq = st.number_input("Quantity", min_value=0.0, value=float(r.quantity))
+                nv = st.text_input("Vendor", value=str(r.vendor))
+                ntier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"], index=0 if "Tier 1" in str(r.vendor_tier) else 1)
+                ntown = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))), index=0)
+                nq = st.number_input("Quantity (square meter)", min_value=0.0, value=float(r.quantity))
                 nm = st.selectbox("Material", sorted(ef.material.astype(str).unique()),
                                   index=max(0, sorted(ef.material.astype(str).unique()).index(r.material)) if r.material in set(ef.material) else 0)
+                ndesc = st.text_input("Material Description", value=str(r.get("material_description", "")))
                 ns = st.selectbox("Verification status", U.STATUSES, index=U.STATUSES.index(r.verification_status) if r.verification_status in U.STATUSES else 1)
+                
                 if st.form_submit_button("Save changes"):
-                    st.session_state.df = U.update_record(df, ef, lid, quantity=nq, material=nm, verification_status=ns)
-                    st.success(f"{lid} updated."); st.rerun()
+                    st.session_state.df = U.update_record(
+                        df, ef, lid, 
+                        vendor=nv.strip(),
+                        vendor_tier=ntier,
+                        township=ntown,
+                        quantity=nq, 
+                        material=nm, 
+                        material_description=ndesc.strip(),
+                        verification_status=ns
+                    )
+                    st.success(f"{lid} updated.")
+                    st.rerun()
     with d:
         st.subheader("🗑️ Delete Records")
         ids = st.multiselect("Select erroneous/duplicate logs", df.log_id)
