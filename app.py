@@ -50,13 +50,20 @@ with st.sidebar:
         vendor = st.text_input("Vendor", placeholder="e.g. YTL Cement Berhad")
         vendor_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream", "Tier 3"])
         township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
-        material = st.selectbox("Material", sorted(ef.material.astype(str).unique()))
+        
+        mats = sorted(ef.material.astype(str).unique()) if ef is not None else []
+        material = st.selectbox("Material", mats)
         material_description = st.text_input("Material description", placeholder="e.g. OPC Portland Cement Bulk")
+        
         qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0, format="%.2f")
         unit = st.text_input("Unit", value="m2", placeholder="e.g. m2, Tons")
-        factor = st.number_input("Factor (tCO₂e per unit)", min_value=0.0, step=0.01, format="%.4f")
+        
+        # Date and Time inputs for timestamp
+        c_date, c_time = st.columns(2)
+        delivery_date = c_date.date_input("Delivery date")
+        delivery_time = c_time.time_input("Delivery time")
+        
         v_status = st.selectbox("Verification status", U.STATUSES)
-        date = st.date_input("Delivery date")
         
         if st.form_submit_button("Submit & calculate"):
             if not vendor.strip() or qty <= 0:
@@ -65,9 +72,10 @@ with st.sidebar:
                 st.session_state.df = U.create_record(
                     df, ef, township=township, vendor=vendor.strip(), vendor_tier=vendor_tier, 
                     material=material, material_description=material_description.strip(), 
-                    quantity=qty, unit=unit, factor_tco2e_per_unit=factor, verification_status=v_status, date=date)
+                    quantity=qty, unit=unit, verification_status=v_status, 
+                    date=delivery_date, time=delivery_time
+                )
                 st.success("Delivery log added successfully!"); st.rerun()
-
 # ---- GAP BETWEEN KPIS AND NAVIGATION HUB ----
 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
 
