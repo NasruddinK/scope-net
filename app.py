@@ -3,30 +3,59 @@ import streamlit as st, pandas as pd, plotly.express as px
 import utils as U
 
 st.set_page_config(page_title="SCoPE-Net", page_icon="🌿", layout="wide")
-GREEN, MINT = "#0D5C35", "#A7F3D0"
+GREEN, MINT, ACCENT = "#064E3B", "#34D399", "#10B981"
 
-# ---- Global styling: Google Font (Poppins) + card look via CSS injection ----
+# ---- Global styling: Google Font (Poppins), vibrant colors, bigger & practical font sizes ----
 st.markdown(f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
-html, body, [class*="css"] {{ font-family:'Poppins',sans-serif; }}
-.stApp {{ background:#F3F5F4; }}
-.banner {{ background:linear-gradient(120deg,{GREEN},#12834B 70%,#2DD4A0); color:#fff; padding:28px 34px; border-radius:18px; margin-bottom:18px; }}
-.banner h1 {{ margin:0; font-weight:700; letter-spacing:.5px; }} .banner p {{ margin:4px 0 0; color:{MINT}; }}
-.card {{ background:#fff; border-radius:14px; padding:16px 20px; border-left:6px solid {GREEN}; box-shadow:0 2px 8px rgba(0,0,0,.06); }}
-.card h3 {{ margin:0; color:{GREEN}; font-size:1.6rem; }} .card span {{ color:#6b7280; font-size:.8rem; }}
-.footer {{ background:{GREEN}; color:#d1fae5; padding:18px 26px; border-radius:14px; margin-top:30px; font-size:.78rem; }}
-.stTabs [aria-selected="true"] {{ color:{GREEN}; border-bottom-color:{GREEN}; }}
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+html, body, [class*="css"] {{ font-family:'Poppins',sans-serif; font-size: 17px; color: #1F2937; }}
+.stApp {{ background:#F0FDF4; }}
+
+/* Vibrant Banner */
+.banner {{ 
+    background:linear-gradient(135deg, {GREEN}, #047857 60%, {ACCENT}); 
+    color:#FFFFFF; 
+    padding:36px 42px; 
+    border-radius:20px; 
+    margin-bottom:24px; 
+    box-shadow: 0 10px 25px -5px rgba(6, 78, 59, 0.25);
+}}
+.banner h1 {{ margin:0; font-weight:800; font-size:2.8rem; letter-spacing:.5px; color:#FFFFFF; }} 
+.banner p {{ margin:8px 0 0; color:{MINT}; font-size:1.15rem; font-weight:600; }}
+
+/* Poppin KPI Cards with larger font sizes */
+.card {{ 
+    background:#FFFFFF; 
+    border-radius:16px; 
+    padding:22px 24px; 
+    border-left:8px solid {ACCENT}; 
+    box-shadow:0 6px 16px rgba(0,0,0,0.08); 
+    transition: transform 0.2s ease;
+}}
+.card:hover {{ transform: translateY(-3px); }}
+.card h3 {{ margin:0; color:{GREEN}; font-size:2.2rem; font-weight:700; }} 
+.card span {{ color:#4B5563; font-size:0.95rem; font-weight:600; text-transform: uppercase; letter-spacing: 0.5px; }}
+
+/* Enhanced Footers & Tabs */
+.footer {{ background:{GREEN}; color:#ECFDF5; padding:22px 30px; border-radius:16px; margin-top:35px; font-size:0.9rem; line-height: 1.5; }}
+.stTabs [aria-selected="true"] {{ color:{GREEN} !important; border-bottom-color:{ACCENT} !important; font-weight: 700; font-size: 1.1rem; }}
+.stTabs [aria-selected="false"] {{ font-weight: 600; font-size: 1.05rem; }}
+
+/* Headers & Form Labels */
+h1, h2, h3, h4 {{ color: #064E3B; font-weight: 700; }}
+.stButton>button {{ background-color: {GREEN}; color: white; font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem; font-size: 1rem; }}
+.stButton>button:hover {{ background-color: #047857; border-color: #047857; color: white; }}
 </style>""", unsafe_allow_html=True)
 
 
 def card(col, value, label):
-    """Render a white KPI metric card."""
+    """Render a white KPI metric card with popping typography."""
     col.markdown(f'<div class="card"><h3>{value}</h3><span>{label}</span></div>', unsafe_allow_html=True)
 
 
 # ---- Session state: load once, then CRUD operates on st.session_state.df ----
 if "df" not in st.session_state:
-    sc, ef, comp, demo = U.load_data()      # was: _load()
+    sc, ef, comp, demo = U.load_data()
     df = U.detect_anomalies(U.calculate_emissions(sc, ef))
     st.session_state.update(df=df, ef=ef, comp=comp, demo=demo)
 df, ef, comp = st.session_state.df, st.session_state.ef, st.session_state.comp
@@ -38,8 +67,10 @@ if st.session_state.demo:
 k = st.columns(4)
 card(k[0], f"{df.emissions_tco2e.sum():,.0f}", "Total embodied carbon (tCO₂e)")
 card(k[1], f"{len(df):,}", "Delivery logs")
-card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) else "0%", "Verified")
+card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) else "0%", "Verified Rate")
 card(k[3], f"{int(df.is_anomaly.sum())}", "ML-flagged anomalies")
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ---- Sidebar: CREATE ----
 with st.sidebar:
@@ -64,6 +95,7 @@ t1, t2, t3, t4 = st.tabs(["📊 Executive Dashboard", "🛠️ Live CRUD Operati
 
 # ---- Tab 1: READ (filters + charts) ----
 with t1:
+    st.markdown("<br>", unsafe_allow_html=True)
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
     sel_v = c[1].multiselect("Vendor tier", sorted(df.vendor_tier.astype(str).unique()))
@@ -75,6 +107,7 @@ with t1:
     if v.empty:
         st.warning("No records match the filters.")
     else:
+        st.markdown("<br>", unsafe_allow_html=True)
         a, b = st.columns(2)
         a.plotly_chart(px.bar(v.groupby("township", as_index=False).emissions_tco2e.sum(), x="township", y="emissions_tco2e",
                               title="Emissions by township", color_discrete_sequence=[GREEN]), use_container_width=True)
@@ -87,7 +120,9 @@ with t1:
 
 # ---- Tab 2: UPDATE + DELETE (+ raw READ) ----
 with t2:
+    st.markdown("<br>", unsafe_allow_html=True)
     st.dataframe(df, use_container_width=True, height=250)
+    st.markdown("<br>", unsafe_allow_html=True)
     u, d = st.columns(2)
     with u:
         st.subheader("✏️ Update record")
@@ -108,10 +143,12 @@ with t2:
         ids = st.multiselect("Select erroneous/duplicate logs", df.log_id)
         if st.button("Delete selected", disabled=not ids):
             st.session_state.df = U.delete_records(df, ids); st.rerun()
+    st.markdown("<br>", unsafe_allow_html=True)
     st.download_button("⬇️ Export CSV", df.to_csv(index=False), "scope_net_export.csv")
 
 # ---- Tab 3: NLP/OCR ----
 with t3:
+    st.markdown("<br>", unsafe_allow_html=True)
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
     up = st.file_uploader("Invoice/BOM text file", type=["txt"])
@@ -125,6 +162,7 @@ with t3:
 
 # ---- Tab 4: Compliance ----
 with t4:
+    st.markdown("<br>", unsafe_allow_html=True)
     rep = U.compliance_summary(df, comp)
     fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
     rep = rep[rep.framework.isin(fw)] if fw else rep
