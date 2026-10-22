@@ -29,9 +29,36 @@ if "df" not in st.session_state:
 df, ef, comp = st.session_state.df, st.session_state.ef, st.session_state.comp
 
 # ---- Header banner + quick stats ----
-# ---- NAVIGATION SECTION BOX CONTAINER ----
-st.markdown('<div class="section-container">', unsafe_allow_html=True)
+st.markdown('<div class="banner"><h1>🌿 SCoPE-Net</h1><p>Scope 3 Embodied Carbon &amp; Supply Chain Transparency Platform · Sime Darby Property</p></div>', unsafe_allow_html=True)
+if st.session_state.demo:
+    st.info("Some master CSVs were not found in /data — running with synthetic demo data.")
 
+k = st.columns(4)
+card(k[0], f"{df.emissions_tco2e.sum():,.0f}", "Total Carbon (tCO₂e)")
+card(k[1], f"{len(df):,}", "Delivery Logs")
+card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) else "0%", "Verified Rate")
+card(k[3], f"{int(df.is_anomaly.sum())}", "ML Anomalies")
+
+# ---- Sidebar: CREATE ----
+with st.sidebar:
+    st.header("➕ Submit Delivery Log")
+    with st.form("create", clear_on_submit=True):
+        township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
+        vendor = st.text_input("Vendor")
+        tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
+        mats = sorted(ef.material.astype(str).unique())
+        material = st.selectbox("Material", mats)
+        qty = st.number_input("Quantity", min_value=0.0, step=1.0)
+        date = st.date_input("Delivery date")
+        if st.form_submit_button("Submit & calculate"):
+            if not vendor.strip() or qty <= 0:
+                st.error("Vendor and a positive quantity are required.")
+            else:
+                st.session_state.df = U.detect_anomalies(U.create_record(
+                    df, ef, township=township, vendor=vendor.strip(), vendor_tier=tier, material=material, quantity=qty, date=date))
+                st.success("Log added."); st.rerun()
+
+# ---- NAVIGATION SECTION BOX CONTAINER ----
 st.markdown("### 🗂️ Platform Navigation Hub")
 nav_selection = st.radio(
     "Select a section to view:",
@@ -40,7 +67,8 @@ nav_selection = st.radio(
     label_visibility="collapsed"
 )
 
-st.markdown("---")  # Visual divider inside the box
+# Open container box for the selected section content
+st.markdown('<div class="section-container">', unsafe_allow_html=True)
 
 # ---- Tab 1 / Section 1: Executive Dashboard ----
 if nav_selection == "📊 Executive Dashboard":
@@ -118,7 +146,8 @@ elif nav_selection == "📑 Audit Compliance Reports":
     st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
 
 # Close section container box div
-st.markdown('</div>', unsafe_allow_html=True)
+data_box_close = '</div>'
+st.markdown(data_box_close, unsafe_allow_html=True)
 
 # ---- Footer ----
 st.markdown('<div class="footer"><b>Disclaimer:</b> Outputs support, but do not replace, formal disclosures under IFRS S1/S2 and Malaysia\'s National Sustainability Reporting Framework (NSRF). Emission estimates rely on benchmark factors and require independent assurance before publication.<br>Built by <b>Team HUNE</b> · Sime Darby Property University Hackathon — Township of Tomorrow</div>', unsafe_allow_html=True)
