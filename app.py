@@ -126,7 +126,7 @@ elif nav_selection == "🛠️ Live CRUD Operations":
             r = df[df.log_id == lid].iloc[0]
             with st.form("update"):
                 up_vendor = st.text_input("Vendor", value=str(r.get("vendor", "")), placeholder="Enter vendor name")
-                up_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream", "Tier 3"], 
+                up_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"], 
                                        index=0 if r.get("vendor_tier") not in ["Tier 2 - Upstream", "Tier 3"] else (1 if r.get("vendor_tier") == "Tier 2 - Upstream" else 2))
                 up_township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))),
                                           index=0 if r.get("township") not in U.TOWNSHIPS else U.TOWNSHIPS.index(r.get("township")))
