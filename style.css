@@ -104,6 +104,20 @@ label, .stMultiSelect span {
     color: #374151 !important;
 }
 
+/* Style Streamlit Dataframe Headers with Green Theme */
+div[data-testid="stDataFrame"] th,
+div[data-testid="stTable"] th {
+    background-color: #046C4E !important;
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* Optional: Slight hover/row styling polish */
+div[data-testid="stDataFrame"] tbody tr:hover {
+    background-color: #F0FDF4 !important;
+}
+
 /* Footer */
 .footer {
     background: linear-gradient(135deg, #065F46 0%, #047857 100%);
