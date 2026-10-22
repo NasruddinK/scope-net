@@ -48,7 +48,7 @@ with st.sidebar:
     st.header("➕ Submit Delivery Log")
     with st.form("create", clear_on_submit=True):
         vendor = st.text_input("Vendor", placeholder="e.g. YTL Cement Berhad")
-        vendor_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream", "Tier 3"])
+        vendor_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
         township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
         
         mats = sorted(ef.material.astype(str).unique()) if ef is not None else []
