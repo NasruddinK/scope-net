@@ -7,86 +7,131 @@ html, body, [class*="css"] {
 }
 
 .stApp {
-    background: #EEF4F2;
+    background: #F0FDF4; /* Fresh, eco-vibrant light green tint */
 }
 
-/* Vibrant Banner */
+/* Vibrant & Glossy Banner */
 .banner {
-    background: linear-gradient(135deg, #065F46 0%, #047857 50%, #10B981 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 45%, #34D399 100%);
     color: #ffffff;
-    padding: 34px 42px;
-    border-radius: 20px;
+    padding: 38px 46px;
+    border-radius: 22px;
     margin-bottom: 24px;
-    box-shadow: 0 10px 25px -5px rgba(6, 95, 70, 0.3);
+    box-shadow: 0 12px 30px -5px rgba(5, 150, 105, 0.35);
+    position: relative;
+    overflow: hidden;
 }
 .banner h1 {
     margin: 0;
-    font-size: 2.5rem !important;
+    font-size: 2.6rem !important;
     font-weight: 700;
     letter-spacing: -0.5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .banner p {
     margin: 8px 0 0 0;
-    color: #6EE7B7;
-    font-size: 1.2rem !important;
+    color: #ECFDF5;
+    font-size: 1.25rem !important;
     font-weight: 500;
+    opacity: 0.95;
 }
 
-/* KPI Metric Cards (Centered) */
+/* Interactive KPI Metric Cards */
 .card {
     background: #ffffff;
-    border-radius: 16px;
-    padding: 22px 24px;
-    border-top: 6px solid #046C4E;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
-    transition: transform 0.2s ease;
+    border-radius: 18px;
+    padding: 24px 26px;
+    border-top: 6px solid #059669;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: center !important;
+    cursor: pointer;
 }
 .card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px -8px rgba(5, 150, 105, 0.25);
+    border-top-color: #34D399;
 }
 .card h3 {
     margin: 0 0 6px 0;
     color: #065F46;
-    font-size: 2.2rem !important;
+    font-size: 2.3rem !important;
     font-weight: 700;
+    letter-spacing: -0.5px;
 }
 .card span {
     color: #4B5563;
     font-size: 0.95rem !important;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
 }
 
-/* Footer */
-.footer {
-    background: #065F46;
-    color: #ECFDF5;
-    padding: 22px 30px;
-    border-radius: 16px;
-    margin-top: 40px;
-    font-size: 0.95rem !important;
-    line-height: 1.6;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+/* Interactive Buttons */
+.stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
+    background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 0.6rem 1.4rem !important;
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+    transition: all 0.25s ease !important;
+}
+.stButton > button:hover, .stFormSubmitButton > button:hover, .stDownloadButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.45) !important;
+    background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+}
+.stButton > button:active {
+    transform: translateY(1px) !important;
 }
 
-/* Form inputs & tabs readability upgrade */
+/* Form inputs with interactive focus glow */
 .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
     font-size: 1.1rem !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease !important;
 }
+.stTextInput input:focus, .stNumberInput input:focus {
+    border-color: #10B981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
 label, .stMultiSelect span {
     font-size: 1.05rem !important;
     font-weight: 600 !important;
     color: #374151 !important;
 }
+
+/* Interactive Tabs */
 .stTabs [aria-selected="true"] {
-    color: #065F46 !important;
-    border-bottom-color: #065F46 !important;
+    color: #059669 !important;
+    border-bottom-color: #059669 !important;
     font-weight: 700 !important;
     font-size: 1.15rem !important;
+    background-color: rgba(16, 185, 129, 0.08);
+    border-radius: 10px 10px 0 0;
+    transition: all 0.2s ease;
 }
 .stTabs [aria-selected="false"] {
     font-size: 1.1rem !important;
     font-weight: 500 !important;
+    transition: all 0.2s ease;
+}
+.stTabs [aria-selected="false"]:hover {
+    color: #047857 !important;
+}
+
+/* Footer */
+.footer {
+    background: linear-gradient(135deg, #065F46 0%, #047857 100%);
+    color: #ECFDF5;
+    padding: 24px 32px;
+    border-radius: 18px;
+    margin-top: 40px;
+    font-size: 0.95rem !important;
+    line-height: 1.6;
+    box-shadow: 0 8px 20px rgba(6, 95, 70, 0.15);
 }
