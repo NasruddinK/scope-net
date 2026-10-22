@@ -64,6 +64,17 @@ html, body, [class*="css"] {
     letter-spacing: 0.8px;
 }
 
+/* Target Streamlit border containers to have white background and gap */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #ffffff !important;
+    border-radius: 18px !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05) !important;
+    border: 1px solid #E5E7EB !important;
+    margin-top: 25px !important;
+    margin-bottom: 25px !important;
+    padding: 10px !important;
+}
+
 /* Interactive Buttons */
 .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
     background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
