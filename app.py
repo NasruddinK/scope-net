@@ -250,7 +250,13 @@ elif nav_selection == "📑 Audit Compliance Reports":
     active_comp = st.session_state.get("comp_df", comp)
     
     # CRUD Action Selector
-    compliance_action = st.radio("Compliance Management Mode", ["📋 View & Filter Reports", "➕ Add Compliance Record", "✏️ Update / Delete Record"], horizontal=True)
+    st.markdown("###Compliance Management Mode")
+    compliance_action = st.segmented_control(
+        "Select a section to view:",
+        ["📋 View & Filter Reports", "➕ Add Compliance Record", "✏️ Update / Delete Record"],
+        default="📋 View & Filter Reports",
+        label_visibility="collapsed"
+    )
     
     if compliance_action == "📋 View & Filter Reports":
         if active_comp is not None and not active_comp.empty:
