@@ -136,9 +136,6 @@ if nav_selection == "📊 Executive Dashboard":
     sel_s = c[2].multiselect("Verification status", sorted(df.verification_status.astype(str).unique()))
     v = df
     
-    anomalies_df = v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]]
-    st.dataframe(format_display_df(anomalies_df), width='stretch', hide_index=True)
-    
     if sel_t: v = v[v.township.isin(sel_t)]
     if sel_v: v = v[v.vendor_tier.isin(sel_v)]
     if sel_s: v = v[v.verification_status.isin(sel_s)]
@@ -161,7 +158,8 @@ if nav_selection == "📊 Executive Dashboard":
         st.plotly_chart(px.line(ts, x="month", y="total_emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), width='stretch')
         
         st.subheader("🚩 Flagged Anomalies")
-        st.dataframe(v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]], use_container_width=True)
+        anomalies_df = v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]]
+        st.dataframe(format_display_df(anomalies_df), width='stretch', hide_index=True)
 
 elif nav_selection == "🛠️ Live CRUD Operations":
     st.dataframe(format_display_df(df), width='stretch', height=300, hide_index=True)
