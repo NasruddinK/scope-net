@@ -160,7 +160,7 @@ if nav_selection == "📊 Executive Dashboard":
         st.warning("No records match the filters.")
     else:
         a, b = st.columns(2)
-        a.plotly_chart(px.bar(v.groupby("township", as_index=False).total_emissions_tco2e.sum(), x="Township", y="Total Emissions (tCO₂e)",
+        a.plotly_chart(px.bar(v.groupby("township", as_index=False).total_emissions_tco2e.sum(), x="township", y="total_emissions_tco2e",
                               title="Emissions by Township", color_discrete_sequence=[GREEN]), use_container_width=True)
         b.plotly_chart(px.pie(v.groupby("material", as_index=False).total_emissions_tco2e.sum(), names="material", values="total_emissions_tco2e",
                               title="Emissions by Material", color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
@@ -172,7 +172,7 @@ if nav_selection == "📊 Executive Dashboard":
             month=lambda d: d.dt_parsed.dt.to_period("M").astype(str)
         ).groupby("month", as_index=False).total_emissions_tco2e.sum()
         
-        st.plotly_chart(px.line(ts, x="Month", y="Total Emissions (tCO₂e)", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), width='stretch')
+        st.plotly_chart(px.line(ts, x="month", y="total_emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), width='stretch')
         
         st.subheader("🚩 Flagged Anomalies")
         anomalies_df = v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]]
