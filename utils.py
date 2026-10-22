@@ -128,31 +128,45 @@ def _coerce_sc(sc):
 
 
 def _coerce_comp(comp):
-    """Map an arbitrary compliance table to framework / requirement_id / requirement / category."""
+    """Map an arbitrary compliance table to canonical SCoPE-Net compliance schema."""
     if comp is None:
         return None
     comp = _norm(comp)
-    guess_fw = _find(comp, ["framework", "standard", "regulation", "law", "guideline"], [])
-    guess_req = _find(comp, ["requirement", "criteria", "disclosure", "item", "description"], [])
-    guess_id = _find(comp, ["id", "code", "req_id"], [])
-    guess_cat = _find(comp, ["category", "pillar", "domain", "topic"], [])
+    
+    # Flexible keyword mapping for standard columns
+    guess_fw = _find(comp, ["reporting_framework", "framework", "standard", "regulation", "law", "guideline"], [])
+    guess_req = _find(comp, ["disclosure_category", "requirement", "criteria", "disclosure", "item", "description"], [])
+    guess_id = _find(comp, ["compliance_id", "requirement_id", "id", "code", "req_id"], [])
+    guess_cat = _find(comp, ["disclosure_category", "category", "pillar", "domain", "topic"], [])
     
     rename_map = {}
-    if guess_fw and guess_fw != "framework": rename_map[guess_fw] = "framework"
-    if guess_req and guess_req != "requirement": rename_map[guess_req] = "requirement"
-    if guess_id and guess_id != "requirement_id": rename_map[guess_id] = "requirement_id"
-    if guess_cat and guess_cat != "category": rename_map[guess_cat] = "category"
+    if guess_fw and guess_fw != "reporting_framework": rename_map[guess_fw] = "reporting_framework"
+    if guess_req and guess_req != "disclosure_category": rename_map[guess_req] = "disclosure_category"
+    if guess_id and guess_id != "compliance_id": rename_map[guess_id] = "compliance_id"
+    if guess_cat and guess_cat != "disclosure_category": rename_map[guess_cat] = "disclosure_category"
     
     comp = comp.rename(columns=rename_map)
-    if "framework" not in comp.columns:
-        comp["framework"] = "General ESG"
-    if "requirement" not in comp.columns:
-        txt_cols = [c for c in comp.columns if not pd.api.types.is_numeric_dtype(comp[c])]
-        comp["requirement"] = comp[txt_cols[0]] if txt_cols else "Requirement"
-    if "requirement_id" not in comp.columns:
-        comp["requirement_id"] = [f"REQ-{i+1:03d}" for i in range(len(comp))]
-    if "category" not in comp.columns:
-        comp["category"] = "General"
+    
+    # Ensure mandatory columns exist with safe defaults
+    if "compliance_id" not in comp.columns:
+        comp["compliance_id"] = [f"CMP-2026-{i+1:05d}" for i in range(len(comp))]
+    if "reporting_framework" not in comp.columns:
+        comp["reporting_framework"] = "IFRS S2 / NSRF"
+    if "disclosure_category" not in comp.columns:
+        comp["disclosure_category"] = "Scope 3 Category 1: Purchased Goods & Services"
+    if "reporting_entity" not in comp.columns:
+        comp["reporting_entity"] = "Sime Darby Property Berhad"
+    if "disclosure_year" not in comp.columns:
+        comp["disclosure_year"] = 2026
+    if "reported_emissions_tco2e" not in comp.columns:
+        comp["reported_emissions_tco2e"] = 0.0
+    if "assurance_level" not in comp.columns:
+        comp["assurance_level"] = "Limited Assurance"
+    if "audit_compliance_status" not in comp.columns:
+        comp["audit_compliance_status"] = "Compliant"
+    if "penalty_risk_score" not in comp.columns:
+        comp["penalty_risk_score"] = 0.0
+        
     return comp
 
 
@@ -328,17 +342,3 @@ def update_record(df, ef, log_id, **changes):
 def delete_records(df, ids):
     """Remove rows by log_id."""
     return df[~df["log_id"].isin(ids)].reset_index(drop=True)
-
-
-# ---------------- Compliance ----------------
-comp = pd.DataFrame({
-        "compliance_id": [f"CMP-2026-{i:05d}" for i in range(70000, 70010)],
-        "reporting_framework": ["IFRS S1", "IFRS S2", "NSRF", "IFRS S2", "NSRF", "IFRS S1", "IFRS S2", "NSRF", "IFRS S1", "IFRS S2"],
-        "disclosure_category": ["Scope 3 Category 1", "Scope 3 Category 1", "Scope 3 Category 2", "Scope 3 Category 1", "Scope 3 Category 2", "Scope 3 Category 5", "Scope 3 Category 1", "Scope 3 Category 1", "Scope 3 Category 6", "Scope 3 Category 9"],
-        "reporting_entity": ["Serenia City Project Office", "Bandar Ainsdale Unit", "Elmina Township", "Serenia City Project Office", "Bandar Ainsdale Unit", "Serenia City Project Office", "Sime Darby Property", "Bandar Ainsdale Unit", "Serenia City Project Office", "Sime Darby Property"],
-        "disclosure_year": [2025, 2026, 2026, 2026, 2026, 2025, 2026, 2026, 2025, 2026],
-        "reported_emissions_tco2e": [1502.6, 2375.8, 2270.2, 904.2, 273.7, 1491.4, 1771.2, 1890.5, 753.6, 1466.5],
-        "assurance_level": ["Limited Assurance", "Reasonable Assurance", "Internal Review", "Limited Assurance", "Limited Assurance", "Limited Assurance", "Internal Review", "Limited Assurance", "Reasonable Assurance", "Internal Review"],
-        "audit_compliance_status": ["Compliant", "Non-Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant", "Compliant"],
-        "penalty_risk_score": [0.0, 9.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    })
