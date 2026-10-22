@@ -171,7 +171,7 @@ def load_data():
     sc["quantity"] = pd.to_numeric(sc.get("quantity", 0), errors="coerce").fillna(0)
     sc["factor_tco2e_per_unit"] = pd.to_numeric(sc.get("factor_tco2e_per_unit", 0), errors="coerce").fillna(0)
     sc["total_emissions_tco2e"] = pd.to_numeric(sc.get("total_emissions_tco2e", sc["quantity"] * sc["factor_tco2e_per_unit"]), errors="coerce").fillna(0).round(3)
-    sc["date"] = pd.to_datetime(sc.get("date", pd.Timestamp.today()), errors="coerce", dayfirst=True)
+    sc["date"] = pd.to_datetime(sc.get("date", pd.Timestamp.today()), errors="coerce", dayfirst=True).dt.strftime('%d/%m/%Y')
     sc = detect_anomalies(sc)
     return sc.reset_index(drop=True), ef, comp, demo
 
