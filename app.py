@@ -39,6 +39,7 @@ def format_display_df(dataframe):
         "factor_tco2e_per_unit": "Emission Factor (tCO₂e/Unit)",
         "factor": "Emission Factor (tCO₂e/Unit)",
         "total_emissions_tco2e": "Total Emissions (tCO₂e)",
+        "emissions_tco2e": "Emissions (CO₂e)",
         "verification_status": "Verification Status",
         "is_anomaly": "Is Anomaly",
         "matched_material": "Matched Material",
@@ -238,9 +239,10 @@ elif nav_selection == "📑 Audit Compliance Reports":
         # Filter by framework if reporting_framework exists
         fw_col = "reporting_framework" if "reporting_framework" in comp.columns else comp.columns[1]
         available_fws = sorted(comp[fw_col].astype(str).unique())
-        fw = st.multiselect("Reporting Framework", available_fws, default=available_fws)
-        
-        rep_df = comp[comp[fw_col].isin(fw)] if fw else comp
+        fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
+        rep = rep[rep.framework.isin(fw)] if fw else rep
+        st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
+                                     color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), width='stretch')
         
         # Display with proper headers, 1-based numbering, and hidden index
         st.dataframe(format_display_df(rep_df), width='stretch', hide_index=True)
