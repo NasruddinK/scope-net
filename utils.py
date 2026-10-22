@@ -102,9 +102,39 @@ def _coerce_sc(sc):
     sc = sc.rename(columns=ren)
     return sc if "material" in sc.columns and "quantity" in sc.columns else None
 
+
+def _coerce_comp(comp):
+    """Map an arbitrary compliance table to framework / requirement_id / requirement / category."""
+    if comp is None:
+        return None
+    comp = _norm(comp)
+    guess_fw = _find(comp, ["framework", "standard", "regulation", "law", "guideline"], [])
+    guess_req = _find(comp, ["requirement", "criteria", "disclosure", "item", "description"], [])
+    guess_id = _find(comp, ["id", "code", "req_id"], [])
+    guess_cat = _find(comp, ["category", "pillar", "domain", "topic"], [])
+    
+    rename_map = {}
+    if guess_fw and guess_fw != "framework": rename_map[guess_fw] = "framework"
+    if guess_req and guess_req != "requirement": rename_map[guess_req] = "requirement"
+    if guess_id and guess_id != "requirement_id": rename_map[guess_id] = "requirement_id"
+    if guess_cat and guess_cat != "category": rename_map[guess_cat] = "category"
+    
+    comp = comp.rename(columns=rename_map)
+    if "framework" not in comp.columns:
+        comp["framework"] = "General ESG"
+    if "requirement" not in comp.columns:
+        txt_cols = [c for c in comp.columns if not pd.api.types.is_numeric_dtype(comp[c])]
+        comp["requirement"] = comp[txt_cols[0]] if txt_cols else "Requirement"
+    if "requirement_id" not in comp.columns:
+        comp["requirement_id"] = [f"REQ-{i+1:03d}" for i in range(len(comp))]
+    if "category" not in comp.columns:
+        comp["category"] = "General"
+    return comp
+
+
 def load_data():
     """Return (supply, emission_factors, compliance, using_demo_flag)."""
-    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _read(F_COMP)
+    sc, ef, comp = _coerce_sc(_read(F_SUPPLY)), _coerce_ef(_read(F_EF)), _coerce_comp(_read(F_COMP))
     demo = sc is None or ef is None or comp is None
     if demo:
         d_sc, d_ef, d_comp = _demo_data()
@@ -148,7 +178,7 @@ def detect_anomalies(df: pd.DataFrame, contamination=0.03) -> pd.DataFrame:
     return df
 
 
-# ---------------- NLP / OCR pipeline (Enhanced) ----------------
+# ---------------- NLP / OCR pipeline ----------------
 _UNITS = r"(tonnes?|tons?|t|kg|g|m3|m³|cubic\s*m(?:eters?)?)"
 _SYN = {
     "opc": "cement", "portland": "cement", "cement": "cement",
@@ -169,10 +199,8 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
         if not line.strip() or line.strip().startswith("#") or line.strip().lower().startswith("invoice"):
             continue
         
-        # Primary regex with unit
         m = re.search(rf"(\d+(?:[.,]\d+)?)\s*{_UNITS}?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
         if not m:
-            # Fallback regex for unitless quantities
             m2 = re.search(rf"(\d+(?:[.,]\d+)?)\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
             if not m2:
                 continue
@@ -185,7 +213,6 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
         
         clean = re.sub(r"[^a-z\s\-]", " ", desc).strip()
         
-        # Match via predefined synonyms / typos
         matched_mat = None
         for k, v in _SYN.items():
             if k in clean or any(k == w for w in clean.split()):
@@ -194,7 +221,6 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
         
         score = 1.0
         if not matched_mat:
-            # Token-level or string fuzzy match
             words = clean.split()
             best_match, best_score = None, 0.0
             for w in words:
