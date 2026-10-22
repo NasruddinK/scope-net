@@ -17,14 +17,14 @@ load_css("style.css")
 
 
 def card(col, value, label):
-    """Render a white KPI metric card with centered styling."""
+    """Render a white KPI metric card with centered styling and larger numbers."""
     col.markdown(f'<div class="card"><h3>{value}</h3><span>{label}</span></div>', unsafe_allow_html=True)
 
 
 # ---- Session state: load once, then CRUD operates on st.session_state.df ----
 if "df" not in st.session_state:
     sc, ef, comp, demo = U.load_data()
-    df = U.detect_anomalies(U.calculate_emissions(sc, ef))
+    df = U.detect_anomalies(sc)
     st.session_state.update(df=df, ef=ef, comp=comp, demo=demo)
 df, ef, comp = st.session_state.df, st.session_state.ef, st.session_state.comp
 
@@ -33,69 +33,57 @@ st.markdown('<div class="banner"><h1>🌿 SCoPE-Net</h1><p>Scope 3 Embodied Carb
 if st.session_state.demo:
     st.info("Some master CSVs were not found in /data — running with synthetic demo data.")
 
-# Safely coerce total emissions to numeric to prevent string/int TypeError
-total_carbon = pd.to_numeric(df.get("total_emissions_tco2e", pd.Series([0])), errors='coerce').sum()
+total_carbon = pd.to_numeric(df.get("total_emissions_tco2e", 0), errors='coerce').sum()
+verified_rate = (df.get("verification_status") == "Verified").mean() if len(df) and "verification_status" in df else 0
+ml_anomalies = int((df.get("is_anomaly") == "Yes").sum()) if "is_anomaly" in df else 0
 
 k = st.columns(4)
 card(k[0], f"{total_carbon:,.0f}", "Total Carbon (tCO₂e)")
 card(k[1], f"{len(df):,}", "Delivery Logs")
-card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) and "verification_status" in df else "0%", "Verified Rate")
-card(k[3], f"{int((df.is_anomaly == 'Yes').sum()) if 'is_anomaly' in df else 0}", "ML Anomalies")
+card(k[2], f"{verified_rate:.0%}", "Verified Rate")
+card(k[3], f"{ml_anomalies}", "ML Anomalies")
 
-# ---- Sidebar: CREATE (Updated with material description & square meters) ----
+# ---- Sidebar: CREATE (Updated with all requested fields & placeholders) ----
 with st.sidebar:
     st.header("➕ Submit Delivery Log")
     with st.form("create", clear_on_submit=True):
         vendor = st.text_input("Vendor", placeholder="e.g. YTL Cement Berhad")
-        vendor_tier = st.selectbox("Vendor tier", ["Choose Tier", "Tier 1 - Direct", "Tier 2 - Upstream"])
+        vendor_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream", "Tier 3"])
         township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
         material = st.selectbox("Material", sorted(ef.material.astype(str).unique()))
-        material_description = st.text_input("Material description", placeholder="e.g. Ready-Mix Concrete Grade 40")
+        material_description = st.text_input("Material description", placeholder="e.g. OPC Portland Cement Bulk")
         qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0, format="%.2f")
-        unit = st.text_input("Unit", value="m2", placeholder="e.g. m2")
+        unit = st.text_input("Unit", value="m2", placeholder="e.g. m2, Tons")
         factor = st.number_input("Factor (tCO₂e per unit)", min_value=0.0, step=0.01, format="%.4f")
+        v_status = st.selectbox("Verification status", U.STATUSES)
         date = st.date_input("Delivery date")
         
         if st.form_submit_button("Submit & calculate"):
             if not vendor.strip() or qty <= 0:
                 st.error("Vendor name and a positive quantity are required.")
             else:
-                # Custom creation logic incorporating all fields
-                new_id = f"LOG-{len(df) + 1:05d}"
-                calc_emissions = round(qty * factor, 3) if factor > 0 else 0.0
-                new_row = pd.DataFrame([{
-                    "log_id": new_id,
-                    "date": pd.to_datetime(date),
-                    "township": township,
-                    "vendor": vendor.strip(),
-                    "vendor_tier": vendor_tier,
-                    "material": material,
-                    "material_description": material_description.strip(),
-                    "quantity": qty,
-                    "unit": unit,
-                    "factor_tco2e_per_unit": factor,
-                    "total_emissions_tco2e": calc_emissions,
-                    "is_anomaly": "No",
-                    "verification_status": "Pending"
-                }])
-                st.session_state.df = pd.concat([df, new_row], ignore_index=True)
+                st.session_state.df = U.create_record(
+                    df, ef, township=township, vendor=vendor.strip(), vendor_tier=vendor_tier, 
+                    material=material, material_description=material_description.strip(), 
+                    quantity=qty, unit=unit, factor_tco2e_per_unit=factor, verification_status=v_status, date=date)
                 st.success("Delivery log added successfully!"); st.rerun()
 
 # ---- GAP BETWEEN KPIS AND NAVIGATION HUB ----
 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
 
-# ---- NAVIGATION HUB BOX (With Gap & White Background) ----
-st.markdown("### 🗂️ Platform Navigation Hub")
-nav_selection = st.segmented_control(
-    "Select a section to view:",
-    ["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"],
-    default="📊 Executive Dashboard",
-    label_visibility="collapsed"
-)
+# ---- NAVIGATION HUB BOX ----
+with st.container(border=True):
+    st.markdown("### 🗂️ Platform Navigation Hub")
+    nav_selection = st.segmented_control(
+        "Select a section to view:",
+        ["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"],
+        default="📊 Executive Dashboard",
+        label_visibility="collapsed"
+    )
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-# ---- Tab 1: READ (filters + charts) ----
+# ---- ACTIVE SECTION CONTENT ----
 if nav_selection == "📊 Executive Dashboard":
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
@@ -109,16 +97,15 @@ if nav_selection == "📊 Executive Dashboard":
         st.warning("No records match the filters.")
     else:
         a, b = st.columns(2)
-        a.plotly_chart(px.bar(v.groupby("township", as_index=False).emissions_tco2e.sum(), x="township", y="emissions_tco2e",
+        a.plotly_chart(px.bar(v.groupby("township", as_index=False).total_emissions_tco2e.sum(), x="township", y="total_emissions_tco2e",
                               title="Emissions by Township", color_discrete_sequence=[GREEN]), use_container_width=True)
-        b.plotly_chart(px.pie(v.groupby("material", as_index=False).emissions_tco2e.sum(), names="material", values="emissions_tco2e",
+        b.plotly_chart(px.pie(v.groupby("material", as_index=False).total_emissions_tco2e.sum(), names="material", values="total_emissions_tco2e",
                               title="Emissions by Material", color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
-        ts = v.dropna(subset=["date"]).assign(month=lambda d: d.date.dt.to_period("M").astype(str)).groupby("month", as_index=False).emissions_tco2e.sum()
-        st.plotly_chart(px.line(ts, x="month", y="emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), use_container_width=True)
+        ts = v.dropna(subset=["date"]).assign(month=lambda d: d.date.dt.to_period("M").astype(str)).groupby("month", as_index=False).total_emissions_tco2e.sum()
+        st.plotly_chart(px.line(ts, x="month", y="total_emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), use_container_width=True)
         st.subheader("🚩 Flagged Anomalies")
-        st.dataframe(v[v.is_anomaly][["log_id", "township", "vendor", "material", "quantity", "emissions_tco2e", "verification_status"]], use_container_width=True)
+        st.dataframe(v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]], use_container_width=True)
 
-# ---- Tab 2: UPDATE + DELETE (+ raw READ) ----
 elif nav_selection == "🛠️ Live CRUD Operations":
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
@@ -140,24 +127,22 @@ elif nav_selection == "🛠️ Live CRUD Operations":
                 up_qty = st.number_input("Quantity (square meter)", min_value=0.0, value=float(r.get("quantity", 0.0)), step=1.0)
                 up_unit = st.text_input("Unit", value=str(r.get("unit", "m2")), placeholder="e.g. m2")
                 up_factor = st.number_input("Factor (tCO₂e per unit)", min_value=0.0, value=float(r.get("factor_tco2e_per_unit", 0.0)), step=0.01)
-                up_emissions = st.number_input("Total emissions (tCO₂e)", min_value=0.0, value=float(r.get("total_emissions_tco2e", 0.0)), step=0.1)
-                
-                anomaly_val = str(r.get("is_anomaly", "No"))
-                up_anomaly = st.selectbox("Is anomaly", ["No", "Yes"], index=0 if anomaly_val.lower() in ["no", "false", "0"] else 1)
+                up_status = st.selectbox("Verification status", U.STATUSES, 
+                                        index=U.STATUSES.index(r.get("verification_status")) if r.get("verification_status") in U.STATUSES else 0)
                 
                 if st.form_submit_button("Save changes"):
-                    idx = df.index[df.log_id == lid]
-                    df.loc[idx, "vendor"] = up_vendor.strip()
-                    df.loc[idx, "vendor_tier"] = up_tier
-                    df.loc[idx, "township"] = up_township
-                    df.loc[idx, "material"] = up_material.strip()
-                    df.loc[idx, "material_description"] = up_desc.strip()
-                    df.loc[idx, "quantity"] = up_qty
-                    df.loc[idx, "unit"] = up_unit.strip()
-                    df.loc[idx, "factor_tco2e_per_unit"] = up_factor
-                    df.loc[idx, "total_emissions_tco2e"] = up_emissions
-                    df.loc[idx, "is_anomaly"] = up_anomaly
-                    st.session_state.df = df
+                    st.session_state.df = U.update_record(
+                        df, ef, lid, 
+                        vendor=up_vendor.strip(), 
+                        vendor_tier=up_tier, 
+                        township=up_township, 
+                        material=up_material.strip(), 
+                        material_description=up_desc.strip(), 
+                        quantity=up_qty, 
+                        unit=up_unit.strip(), 
+                        factor_tco2e_per_unit=up_factor, 
+                        verification_status=up_status
+                    )
                     st.success(f"Record {lid} updated successfully!"); st.rerun()
                     
     with d:
@@ -167,7 +152,6 @@ elif nav_selection == "🛠️ Live CRUD Operations":
             st.session_state.df = U.delete_records(df, ids); st.rerun()
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
 
-# ---- Tab 3: NLP/OCR ----
 elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
@@ -178,9 +162,8 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
         if res.empty: st.warning("No line items recognised.")
         else:
             st.dataframe(res, use_container_width=True)
-            st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
+            st.metric("Parsed embodied carbon (tCO₂e)", f"{res.total_emissions_tco2e.sum():,.2f}")
 
-# ---- Tab 4: Compliance ----
 elif nav_selection == "📑 Audit Compliance Reports":
     rep = U.compliance_summary(df, comp)
     fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
