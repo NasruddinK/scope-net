@@ -3,7 +3,6 @@
 html, body, [class*="css"] {
     font-family: 'Poppins', sans-serif !important;
     font-size: 1.05rem !important;
-    color: #1F2937;
 }
 
 .stApp {
@@ -77,6 +76,45 @@ html, body, [class*="css"] {
     border: 1px solid #E5E7EB;
 }
 
+/* --- FIXED & ENHANCED INTERACTIVE TABS --- */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background-color: rgba(5, 150, 105, 0.06);
+    padding: 8px;
+    border-radius: 14px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    border-radius: 10px;
+    padding: 0 20px;
+    background-color: transparent;
+    transition: all 0.25s ease;
+}
+
+/* Tab text labels - forcing high contrast visibility in both Light/Dark mode */
+.stTabs [data-baseweb="tab"] p, 
+.stTabs [data-baseweb="tab"] span {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: #065F46 !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: rgba(5, 150, 105, 0.15);
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.stTabs [aria-selected="true"] p,
+.stTabs [aria-selected="true"] span {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
 /* Interactive Buttons */
 .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
     background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
@@ -110,20 +148,6 @@ label, .stMultiSelect span {
     font-size: 1.05rem !important;
     font-weight: 600 !important;
     color: #374151 !important;
-}
-
-/* Interactive Tabs */
-.stTabs [aria-selected="true"] {
-    color: #059669 !important;
-    border-bottom-color: #059669 !important;
-    font-weight: 700 !important;
-    font-size: 1.15rem !important;
-    background-color: rgba(16, 185, 129, 0.08);
-    border-radius: 10px 10px 0 0;
-}
-.stTabs [aria-selected="false"] {
-    font-size: 1.1rem !important;
-    font-weight: 500 !important;
 }
 
 /* Footer */
