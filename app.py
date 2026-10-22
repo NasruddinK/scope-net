@@ -11,13 +11,13 @@ def load_css(file_name):
         with open(file_name) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
     except FileNotFoundError:
-        st.warning(f"External stylesheet '{file_name}' not found. Default styling will apply.")
+        st.warning(f"External stylesheet '{file_name}' not found.")
 
 load_css("style.css")
 
 
 def card(col, value, label):
-    """Render a white KPI metric card with vibrant centered styling."""
+    """Render a white KPI metric card with centered styling."""
     col.markdown(f'<div class="card"><h3>{value}</h3><span>{label}</span></div>', unsafe_allow_html=True)
 
 
@@ -32,6 +32,7 @@ df, ef, comp = st.session_state.df, st.session_state.ef, st.session_state.comp
 st.markdown('<div class="banner"><h1>🌿 SCoPE-Net</h1><p>Scope 3 Embodied Carbon &amp; Supply Chain Transparency Platform · Sime Darby Property</p></div>', unsafe_allow_html=True)
 if st.session_state.demo:
     st.info("Some master CSVs were not found in /data — running with synthetic demo data.")
+
 k = st.columns(4)
 card(k[0], f"{df.emissions_tco2e.sum():,.0f}", "Total Carbon (tCO₂e)")
 card(k[1], f"{len(df):,}", "Delivery Logs")
@@ -57,11 +58,21 @@ with st.sidebar:
                     df, ef, township=township, vendor=vendor.strip(), vendor_tier=tier, material=material, quantity=qty, date=date))
                 st.success("Log added."); st.rerun()
 
-t1, t2, t3, t4 = st.tabs(["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"])
+# ---- NAVIGATION SECTION BOX CONTAINER ----
+st.markdown("### 🗂️ Platform Navigation Hub")
+nav_selection = st.radio(
+    "Select a section to view:",
+    ["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
 
-# ---- Tab 1: READ (filters + charts) wrapped in section-box ----
-with t1:
-    st.markdown('<div class="section-box">', unsafe_allow_html=True)
+# Open container box for the selected section content
+st.markdown('<div class="section-container">', unsafe_allow_html=True)
+
+# ---- Tab 1 / Section 1: Executive Dashboard ----
+if nav_selection == "📊 Executive Dashboard":
+    st.subheader("📊 Executive Dashboard")
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
     sel_v = c[1].multiselect("Vendor tier", sorted(df.vendor_tier.astype(str).unique()))
@@ -82,11 +93,10 @@ with t1:
         st.plotly_chart(px.line(ts, x="month", y="emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), use_container_width=True)
         st.subheader("🚩 Flagged Anomalies")
         st.dataframe(v[v.is_anomaly][["log_id", "township", "vendor", "material", "quantity", "emissions_tco2e", "verification_status"]], use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---- Tab 2: UPDATE + DELETE wrapped in section-box ----
-with t2:
-    st.markdown('<div class="section-box">', unsafe_allow_html=True)
+# ---- Tab 2 / Section 2: Live CRUD Operations ----
+elif nav_selection == "🛠️ Live CRUD Operations":
+    st.subheader("🛠️ Live CRUD Operations")
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
     with u:
@@ -109,11 +119,10 @@ with t2:
         if st.button("Delete selected", disabled=not ids):
             st.session_state.df = U.delete_records(df, ids); st.rerun()
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---- Tab 3: NLP/OCR wrapped in section-box ----
-with t3:
-    st.markdown('<div class="section-box">', unsafe_allow_html=True)
+# ---- Tab 3 / Section 3: NLP/OCR Ingestion Portal ----
+elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
+    st.subheader("🧾 NLP/OCR Ingestion Portal")
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
     up = st.file_uploader("Invoice/BOM text file", type=["txt"])
@@ -124,11 +133,10 @@ with t3:
         else:
             st.dataframe(res, use_container_width=True)
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---- Tab 4: Compliance wrapped in section-box ----
-with t4:
-    st.markdown('<div class="section-box">', unsafe_allow_html=True)
+# ---- Tab 4 / Section 4: Audit Compliance Reports ----
+elif nav_selection == "📑 Audit Compliance Reports":
+    st.subheader("📑 Audit Compliance Reports")
     rep = U.compliance_summary(df, comp)
     fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
     rep = rep[rep.framework.isin(fw)] if fw else rep
@@ -136,7 +144,10 @@ with t4:
                                  color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), use_container_width=True)
     st.dataframe(rep, use_container_width=True)
     st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
-    st.markdown('</div>', unsafe_allow_html=True)
+
+# Close section container box div
+data_box_close = '</div>'
+st.markdown(data_box_close, unsafe_allow_html=True)
 
 # ---- Footer ----
 st.markdown('<div class="footer"><b>Disclaimer:</b> Outputs support, but do not replace, formal disclosures under IFRS S1/S2 and Malaysia\'s National Sustainability Reporting Framework (NSRF). Emission estimates rely on benchmark factors and require independent assurance before publication.<br>Built by <b>Team HUNE</b> · Sime Darby Property University Hackathon — Township of Tomorrow</div>', unsafe_allow_html=True)
