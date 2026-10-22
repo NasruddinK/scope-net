@@ -235,6 +235,7 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
+    rep = U.compliance_summary(df, comp)
     if comp is not None and not comp.empty:
         # Filter by framework if reporting_framework exists
         fw_col = "reporting_framework" if "reporting_framework" in comp.columns else comp.columns[1]
