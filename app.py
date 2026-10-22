@@ -241,26 +241,92 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
-    if comp is not None and not comp.empty:
-        # Determine the framework column name
-        fw_col = "reporting_framework" if "reporting_framework" in comp.columns else comp.columns[1]
-        available_fws = sorted(comp[fw_col].astype(str).unique())
+    st.subheader("📑 Compliance Frameworks & Audit Tracking")
+    
+    # Initialize session state for compliance dataset if not present
+    if "comp_df" not in st.session_state and comp is not None:
+        st.session_state.comp_df = comp.copy()
         
-        # Multiselect filter for frameworks
-        fw = st.multiselect("Reporting Framework", available_fws, default=available_fws)
-        rep_df = comp[comp[fw_col].isin(fw)] if fw else comp
-        
-        # Optional: Chart overview based on audit status if the column exists
-        status_col = "audit_compliance_status" if "audit_compliance_status" in comp.columns else comp.columns[-2]
-        st.plotly_chart(px.histogram(rep_df, x=fw_col, color=status_col, barmode="group",
-                                     color_discrete_map={"Compliant": GREEN, "Under Review": "#F59E0B", "Non-Compliant (Action Required)": "#DC2626"}), width='stretch')
-        
-        # Display table with proper headers, 1-based numbering, and hidden index
-        st.dataframe(format_display_df(rep_df), width='stretch', hide_index=True)
-        
-        st.download_button("⬇️ Download audit report (CSV)", rep_df.to_csv(index=False), "scope_net_audit_report.csv")
-    else:
-        st.error("Compliance framework data could not be loaded.")
+    active_comp = st.session_state.get("comp_df", comp)
+    
+    # CRUD Action Selector
+    compliance_action = st.radio("Compliance Management Mode", ["📋 View & Filter Reports", "➕ Add Compliance Record", "✏️ Update / Delete Record"], horizontal=True)
+    
+    if compliance_action == "📋 View & Filter Reports":
+        if active_comp is not None and not active_comp.empty:
+            fw_col = "reporting_framework" if "reporting_framework" in active_comp.columns else active_comp.columns[1]
+            available_fws = sorted(active_comp[fw_col].astype(str).unique())
+            
+            fw = st.multiselect("Reporting Framework", available_fws, default=available_fws)
+            rep_df = active_comp[active_comp[fw_col].isin(fw)] if fw else active_comp
+            
+            status_col = "audit_compliance_status" if "audit_compliance_status" in active_comp.columns else active_comp.columns[-2]
+            st.plotly_chart(px.histogram(rep_df, x=fw_col, color=status_col, barmode="group",
+                                         color_discrete_map={"Compliant": GREEN, "Under Review": "#F59E0B", "Non-Compliant (Action Required)": "#DC2626"}), width='stretch')
+            
+            st.dataframe(format_display_df(rep_df), width='stretch', hide_index=True)
+            st.download_button("⬇️ Download audit report (CSV)", rep_df.to_csv(index=False), "scope_net_audit_report.csv")
+        else:
+            st.error("Compliance framework data could not be loaded.")
+            
+    elif compliance_action == "➕ Add Compliance Record":
+        st.markdown("### ➕ Submit New Compliance Record")
+        with st.form("add_compliance_form"):
+            c1, c2 = st.columns(2)
+            framework = c1.selectbox("Reporting Framework", ["Choose framework...", "IFRS S1 (General Sustainability)", "IFRS S2 (Climate-related Disclosures)", "NSRF (National Sustainability Reporting Framework)", "GHG Protocol Corporate Value Chain (Scope 3)", "Bursa Malaysia ESG Reporting Guide", "TCFD Recommendations"], index=0)
+            category = c2.selectbox("Disclosure Category", ["Choose category...", "Scope 3 Category 1: Purchased Goods & Services", "Scope 3 Category 2: Capital Goods", "Scope 3 Category 5: Waste Generated in Operations", "Scope 3 Category 6: Business Travel", "Embodied Carbon Metrics & Targets"], index=0)
+            
+            c3, c4 = st.columns(2)
+            entity = c3.text_input("Reporting Entity", placeholder="Enter reporting entity name")
+            year = c4.number_input("Disclosure Year", min_value=2020, max_value=2030, value=2026, step=1)
+            
+            c5, c6 = st.columns(2)
+            emissions = c5.number_input("Reported Emissions (tCO₂e)", min_value=0.0, step=10.0, format="%.2f")
+            assurance = c6.selectbox("Assurance Level", ["Choose assurance...", "Reasonable Assurance", "Limited Assurance", "Internal Review / Management Oversight", "Self-Declared / Unverified", "External Audit Pending"], index=0)
+            
+            c7, c8 = st.columns(2)
+            status = c7.selectbox("Audit Compliance Status", ["Choose status...", "Compliant", "Non-Compliant (Action Required)", "Under Review", "Exempt / Out of Scope", "Conditionally Approved"], index=0)
+            risk = c8.number_input("Penalty Risk Score (0-10)", min_value=0.0, max_value=10.0, step=0.1, value=0.0)
+            
+            if st.form_submit_button("Submit Compliance Record"):
+                if framework == "Choose framework..." or category == "Choose category..." or assurance == "Choose assurance..." or status == "Choose status..." or not entity.strip():
+                    st.error("Please fill in all required fields and select valid dropdown options.")
+                else:
+                    st.session_state.comp_df = U.create_compliance_record(
+                        active_comp, reporting_framework=framework, disclosure_category=category,
+                        reporting_entity=entity.strip(), disclosure_year=year, reported_emissions_tco2e=emissions,
+                        assurance_level=assurance, audit_compliance_status=status, penalty_risk_score=risk
+                    )
+                    st.success("Compliance record added successfully!")
+                    st.rerun()
+                    
+    elif compliance_action == "✏️ Update / Delete Record":
+        st.markdown("### ✏️ Modify or Delete Existing Compliance Record")
+        if active_comp is not None and not active_comp.empty:
+            selected_id = st.selectbox("Select Compliance ID to Edit/Delete", sorted(active_comp["compliance_id"].astype(str).unique()))
+            record_row = active_comp[active_comp["compliance_id"] == selected_id].iloc[0]
+            
+            with st.form("edit_compliance_form"):
+                ed_framework = st.selectbox("Reporting Framework", ["IFRS S1 (General Sustainability)", "IFRS S2 (Climate-related Disclosures)", "NSRF (National Sustainability Reporting Framework)", "GHG Protocol Corporate Value Chain (Scope 3)", "Bursa Malaysia ESG Reporting Guide", "TCFD Recommendations"], index=0)
+                ed_status = st.selectbox("Audit Compliance Status", ["Compliant", "Non-Compliant (Action Required)", "Under Review", "Exempt / Out of Scope", "Conditionally Approved"], index=0)
+                ed_risk = st.number_input("Penalty Risk Score (0-10)", min_value=0.0, max_value=10.0, step=0.1, value=float(record_row.get("penalty_risk_score", 0.0)))
+                
+                col_upd, col_del = st.columns(2)
+                submitted_update = col_upd.form_submit_button("💾 Save Changes")
+                submitted_delete = col_del.form_submit_button("🗑️ Delete Record")
+                
+                if submitted_update:
+                    st.session_state.comp_df = U.update_compliance_record(
+                        active_comp, selected_id, reporting_framework=ed_framework, audit_compliance_status=ed_status, penalty_risk_score=ed_risk
+                    )
+                    st.success(f"Compliance record {selected_id} updated successfully!")
+                    st.rerun()
+                elif submitted_delete:
+                    st.session_state.comp_df = U.delete_compliance_record(active_comp, selected_id)
+                    st.warning(f"Compliance record {selected_id} deleted successfully!")
+                    st.rerun()
+        else:
+            st.info("No compliance records available to edit.")
 
 # ---- Footer ----
 st.markdown('<div class="footer"><b>Disclaimer:</b> Outputs support, but do not replace, formal disclosures under IFRS S1/S2 and Malaysia\'s National Sustainability Reporting Framework (NSRF). Emission estimates rely on benchmark factors and require independent assurance before publication.<br>Built by <b>Team HUNE</b> · Sime Darby Property University Hackathon — Township of Tomorrow</div>', unsafe_allow_html=True)
