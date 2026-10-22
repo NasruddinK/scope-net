@@ -245,6 +245,8 @@ elif nav_selection == "📑 Audit Compliance Reports":
         st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
                                      color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), width='stretch')
         
+        rep_df = comp[comp[fw_col].isin(fw)] if fw else comp
+        
         # Display with proper headers, 1-based numbering, and hidden index
         st.dataframe(format_display_df(rep_df), width='stretch', hide_index=True)
         
