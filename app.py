@@ -47,7 +47,7 @@ with st.sidebar:
     with st.form("create", clear_on_submit=True):
         township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
         vendor = st.text_input("Vendor")
-        tier = st.selectbox("Vendor tier", ["Tier 1", "Tier 2", "Tier 3"])
+        tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
         mats = sorted(ef.material.astype(str).unique())
         material = st.selectbox("Material", mats)
         qty = st.number_input("Quantity", min_value=0.0, step=1.0)
