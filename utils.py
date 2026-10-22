@@ -252,32 +252,37 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
 
 # ---------------- CRUD ----------------
 def create_record(df, ef, **f):
-    """Append a new delivery log; emissions are computed automatically."""
+    """Append a new delivery log with full user fields."""
     nid = f"LOG-{len(df) + 1:05d}"
-    while nid in set(df["log_id"]): 
-        nid = f"LOG-{np.random.randint(10**5, 10**6)}"
+    while nid in set(df["log_id"]): nid = f"LOG-{np.random.randint(10**5, 10**6)}"
     
+    is_anom_bool = True if str(f.get("is_anomaly", "n")).lower() == "y" else False
     row = pd.DataFrame([{
         "log_id": nid, 
-        "date": pd.to_datetime(f.get("date")), 
-        "township": f["township"],
-        "vendor": f["vendor"], 
-        "vendor_tier": f["vendor_tier"], 
-        "material": f["material"],
+        "date": pd.to_datetime(f.get("date", pd.Timestamp.today())), 
+        "township": f.get("township", "Elmina City"),
+        "vendor": f.get("vendor", "Default Vendor"), 
+        "vendor_tier": f.get("vendor_tier", "Tier 1 - Direct"), 
+        "material": f.get("material", "Cement"),
         "material_description": f.get("material_description", ""),
-        "quantity": float(f["quantity"]), 
-        "verification_status": "Pending"
+        "quantity": float(f.get("quantity", 0.0)),
+        "unit": f.get("unit", "m2"),
+        "factor_tco2e_per_unit": f.get("factor_tco2e_per_unit", None),
+        "verification_status": "Pending",
+        "is_anomaly": is_anom_bool
     }])
-    return pd.concat([df, calculate_emissions(row, ef).assign(is_anomaly=False)], ignore_index=True)
+    return pd.concat([df, calculate_emissions(row, ef)], ignore_index=True)
 
 
 def update_record(df, ef, log_id, **changes):
-    """Edit fields of one record, then recompute its emissions."""
+    """Edit fields of one record and recompute emissions."""
     i = df.index[df["log_id"] == log_id]
     if len(i) == 0: return df
     for k, v in changes.items(): 
-        df.loc[i, k] = v
-    df.loc[i, "is_anomaly"] = False if changes.get("verification_status") == "Verified" else df.loc[i, "is_anomaly"]
+        if k == "is_anomaly":
+            df.loc[i, k] = True if str(v).lower() == "y" else False
+        else:
+            df.loc[i, k] = v
     return recompute_row(df, ef, i)
 
 
