@@ -26,7 +26,7 @@ def card(col, value, label):
 
 # ---- Session state: load once, then CRUD operates on st.session_state.df ----
 if "df" not in st.session_state:
-    sc, ef, comp, demo = U.load_data()      # was: _load()
+    sc, ef, comp, demo = U.load_data()
     df = U.detect_anomalies(U.calculate_emissions(sc, ef))
     st.session_state.update(df=df, ef=ef, comp=comp, demo=demo)
 df, ef, comp = st.session_state.df, st.session_state.ef, st.session_state.comp
@@ -47,7 +47,7 @@ with st.sidebar:
     with st.form("create", clear_on_submit=True):
         township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
         vendor = st.text_input("Vendor")
-        tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
+        tier = st.selectbox("Vendor tier", ["Tier 1", "Tier 2", "Tier 3"])
         mats = sorted(ef.material.astype(str).unique())
         material = st.selectbox("Material", mats)
         qty = st.number_input("Quantity", min_value=0.0, step=1.0)
@@ -110,18 +110,52 @@ with t2:
             st.session_state.df = U.delete_records(df, ids); st.rerun()
     st.download_button("⬇️ Export CSV", df.to_csv(index=False), "scope_net_export.csv")
 
-# ---- Tab 3: NLP/OCR ----
+# ---- Tab 3: NLP/OCR (Enhanced with Import Pipeline) ----
 with t3:
-    st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
+    st.write("Paste raw invoice/BOM text (or upload a `.txt`). Lines are parsed, messy descriptions and typos are fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
     up = st.file_uploader("Invoice/BOM text file", type=["txt"])
     txt = st.text_area("Raw text", value=up.read().decode("utf-8", "ignore") if up else sample, height=160)
-    if st.button("Run OCR/NLP pipeline"):
-        res = U.parse_invoice_text(txt, ef)
-        if res.empty: st.warning("No line items recognised.")
+    
+    if st.button("Run OCR/NLP pipeline", type="primary"):
+        st.session_state.parsed_res = U.parse_invoice_text(txt, ef)
+        
+    if "parsed_res" in st.session_state:
+        res = st.session_state.parsed_res
+        if res.empty: 
+            st.warning("No line items recognised.")
         else:
             st.dataframe(res, use_container_width=True)
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
+            
+            st.markdown("---")
+            st.subheader("📥 Import Parsed Items into Delivery Logs")
+            with st.form("import_nlp"):
+                col_i1, col_i2, col_i3 = st.columns(3)
+                imp_ts = col_i1.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))), key="nlp_ts")
+                imp_vendor = col_i2.text_input("Vendor name", value="Parsed Invoice Vendor", key="nlp_vnd")
+                imp_tier = col_i3.selectbox("Vendor tier", ["Tier 1", "Tier 2", "Tier 3"], key="nlp_tr")
+                imp_date = st.date_input("Delivery date", key="nlp_dt")
+                
+                if st.form_submit_button("Import Valid Items to Database"):
+                    valid_res = res[res.matched_material != "No Match"]
+                    if valid_res.empty:
+                        st.error("No successfully matched items to import.")
+                    else:
+                        new_rows = []
+                        for _, row in valid_res.iterrows():
+                            new_rows.append({
+                                "date": pd.to_datetime(imp_date),
+                                "township": imp_ts,
+                                "vendor": imp_vendor,
+                                "vendor_tier": imp_tier,
+                                "material": row["matched_material"],
+                                "quantity": row["quantity"]
+                            })
+                        new_batch = pd.DataFrame(new_rows)
+                        st.session_state.df = U.detect_anomalies(pd.concat([df, U.calculate_emissions(new_batch, ef)], ignore_index=True))
+                        st.success(f"Successfully imported {len(new_batch)} line items into SCoPE-Net logs!")
+                        st.rerun()
 
 # ---- Tab 4: Compliance ----
 with t4:
