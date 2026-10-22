@@ -58,17 +58,19 @@ with st.sidebar:
                     df, ef, township=township, vendor=vendor.strip(), vendor_tier=tier, material=material, quantity=qty, date=date))
                 st.success("Log added."); st.rerun()
 
-# ---- NAVIGATION HUB BOX ----
+# ---- NAVIGATION HUB BOX (Enclosing the selector cleanly inside a styled container) ----
 with st.container(border=True):
     st.markdown("### 🗂️ Platform Navigation Hub")
-    nav_selection = st.radio(
+    nav_selection = st.segmented_control(
         "Select a section to view:",
         ["📊 Executive Dashboard", "🛠️ Live CRUD Operations", "🧾 NLP/OCR Ingestion Portal", "📑 Audit Compliance Reports"],
-        horizontal=True,
+        default="📊 Executive Dashboard",
         label_visibility="collapsed"
     )
 
-# ---- ACTIVE SECTION CONTENT (Renders below the box) ----
+st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+
+# ---- ACTIVE SECTION CONTENT ----
 if nav_selection == "📊 Executive Dashboard":
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
