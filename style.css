@@ -104,35 +104,6 @@ label, .stMultiSelect span {
     color: #374151 !important;
 }
 
-/* Centered Navigation Hub Container Styling */
-div[data-testid="stContainer"] {
-    background-color: #FFFFFF !important;
-    border-radius: 18px !important;
-    padding: 20px 30px !important;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.05) !important;
-    border: 1px solid #E5E7EB !important;
-    text-align: center !important;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-div[data-testid="stContainer"] h3 {
-    text-align: center !important;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Center align the segmented control widget inside the container */
-div[data-testid="stContainer"] div[data-baseweb="segmented-control"],
-div[data-testid="stContainer"] div[class*="stsegmented-control"] {
-    display: flex !important;
-    justify-content: center !important;
-    margin: 0 auto !important;
-}
-
 /* Footer */
 .footer {
     background: linear-gradient(135deg, #065F46 0%, #047857 100%);
