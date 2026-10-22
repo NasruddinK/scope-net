@@ -254,10 +254,20 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
 def create_record(df, ef, **f):
     """Append a new delivery log; emissions are computed automatically."""
     nid = f"LOG-{len(df) + 1:05d}"
-    while nid in set(df["log_id"]): nid = f"LOG-{np.random.randint(10**5, 10**6)}"
-    row = pd.DataFrame([{"log_id": nid, "date": pd.to_datetime(f.get("date")), "township": f["township"],
-                         "vendor": f["vendor"], "vendor_tier": f["vendor_tier"], "material": f["material"],
-                         "quantity": float(f["quantity"]), "verification_status": "Pending"}])
+    while nid in set(df["log_id"]): 
+        nid = f"LOG-{np.random.randint(10**5, 10**6)}"
+    
+    row = pd.DataFrame([{
+        "log_id": nid, 
+        "date": pd.to_datetime(f.get("date")), 
+        "township": f["township"],
+        "vendor": f["vendor"], 
+        "vendor_tier": f["vendor_tier"], 
+        "material": f["material"],
+        "material_description": f.get("material_description", ""),
+        "quantity": float(f["quantity"]), 
+        "verification_status": "Pending"
+    }])
     return pd.concat([df, calculate_emissions(row, ef).assign(is_anomaly=False)], ignore_index=True)
 
 
@@ -265,7 +275,8 @@ def update_record(df, ef, log_id, **changes):
     """Edit fields of one record, then recompute its emissions."""
     i = df.index[df["log_id"] == log_id]
     if len(i) == 0: return df
-    for k, v in changes.items(): df.loc[i, k] = v
+    for k, v in changes.items(): 
+        df.loc[i, k] = v
     df.loc[i, "is_anomaly"] = False if changes.get("verification_status") == "Verified" else df.loc[i, "is_anomaly"]
     return recompute_row(df, ef, i)
 
