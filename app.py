@@ -39,24 +39,37 @@ card(k[1], f"{len(df):,}", "Delivery Logs")
 card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) else "0%", "Verified Rate")
 card(k[3], f"{int(df.is_anomaly.sum())}", "ML Anomalies")
 
-# ---- Sidebar: CREATE ----
+# ---- Sidebar: CREATE (Updated with material description & square meters) ----
 with st.sidebar:
     st.header("➕ Submit Delivery Log")
     with st.form("create", clear_on_submit=True):
-        township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
         vendor = st.text_input("Vendor")
         tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
+        township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
+        
         mats = sorted(ef.material.astype(str).unique())
         material = st.selectbox("Material", mats)
-        qty = st.number_input("Quantity", min_value=0.0, step=1.0)
+        material_description = st.text_input("Material Description")
+        
+        qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0)
         date = st.date_input("Delivery date")
+        
         if st.form_submit_button("Submit & calculate"):
             if not vendor.strip() or qty <= 0:
                 st.error("Vendor and a positive quantity are required.")
             else:
                 st.session_state.df = U.detect_anomalies(U.create_record(
-                    df, ef, township=township, vendor=vendor.strip(), vendor_tier=tier, material=material, quantity=qty, date=date))
-                st.success("Log added."); st.rerun()
+                    df, ef, 
+                    vendor=vendor.strip(), 
+                    vendor_tier=tier, 
+                    township=township, 
+                    material=material, 
+                    material_description=material_description.strip(),
+                    quantity=qty, 
+                    date=date
+                ))
+                st.success("Log added.")
+                st.rerun()
 
 # ---- GAP BETWEEN KPIS AND NAVIGATION HUB ----
 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
@@ -72,7 +85,7 @@ nav_selection = st.segmented_control(
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-# ---- ACTIVE SECTION CONTENT ----
+# ---- Tab 1: READ (filters + charts) ----
 if nav_selection == "📊 Executive Dashboard":
     c = st.columns(3)
     sel_t = c[0].multiselect("Township", sorted(df.township.astype(str).unique()))
@@ -95,6 +108,7 @@ if nav_selection == "📊 Executive Dashboard":
         st.subheader("🚩 Flagged Anomalies")
         st.dataframe(v[v.is_anomaly][["log_id", "township", "vendor", "material", "quantity", "emissions_tco2e", "verification_status"]], use_container_width=True)
 
+# ---- Tab 2: UPDATE + DELETE (+ raw READ) ----
 elif nav_selection == "🛠️ Live CRUD Operations":
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
@@ -119,6 +133,7 @@ elif nav_selection == "🛠️ Live CRUD Operations":
             st.session_state.df = U.delete_records(df, ids); st.rerun()
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
 
+# ---- Tab 3: NLP/OCR ----
 elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
     st.write("Paste raw invoice/BOM text (or upload a .txt). Lines are parsed, messy descriptions fuzzy-matched to emission factors.")
     sample = "Invoice #4471\n120 tonnes OPC Portland cement\n35 t reinforcing rebar 12mm\n80 m3 readymix conc. grade 30\n2500 kg alumnium frames"
@@ -131,6 +146,7 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.dataframe(res, use_container_width=True)
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
+# ---- Tab 4: Compliance ----
 elif nav_selection == "📑 Audit Compliance Reports":
     rep = U.compliance_summary(df, comp)
     fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
