@@ -250,7 +250,7 @@ elif nav_selection == "📑 Audit Compliance Reports":
     active_comp = st.session_state.get("comp_df", comp)
     
     # CRUD Action Selector
-    st.markdown("###Compliance Management Mode")
+    st.markdown("Compliance Management Mode")
     compliance_action = st.segmented_control(
         "Select a section to view:",
         ["📋 View & Filter Reports", "➕ Add Compliance Record", "✏️ Update / Delete Record"],
