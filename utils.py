@@ -179,29 +179,55 @@ def detect_anomalies(df: pd.DataFrame, contamination=0.03) -> pd.DataFrame:
 
 
 # ---------------- NLP / OCR simulation ----------------
-_UNITS = r"(tonnes?|tons?|t|kg|m3|m³|cubic\s*m(?:eters?)?)"
-_SYN = {"opc": "cement", "portland": "cement", "rebar": "steel rebar", "reinforcing": "steel rebar",
-        "readymix": "concrete", "ready-mix": "concrete", "aluminum": "aluminium", "wood": "timber"}
+# Non-capturing inner unit pattern, wrapped in group 2 for optional unit capture
+_UNITS = r"(?:tonnes?|tons?|t|kg|m3|m³|cubic\s*m(?:eters?)?)"
 
+# Comprehensive synonym mapping for all target materials
+_SYN = {
+    "opc": "cement", "portland": "cement", "cement": "cement",
+    "rebar": "steel rebar", "reinforcing": "steel rebar", "steel": "steel rebar", "structural steel": "steel rebar",
+    "readymix": "concrete", "ready-mix": "concrete", "concrete": "concrete",
+    "aluminum": "aluminium", "aluminium": "aluminium",
+    "wood": "timber", "timber": "timber", "lumber": "timber",
+    "glass": "glass", "float glass": "glass", "safety glass": "glass",
+    "asphalt": "asphalt", "bitumen": "asphalt", "macadam": "asphalt"
+}
 
 def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.5) -> pd.DataFrame:
-    """Simulated OCR/NLP: regex-extract 'qty unit item' lines, normalise noise/synonyms, fuzzy-match to factors."""
+    """Simulated OCR/NLP: regex-extract 'qty [unit] item' lines, normalise noise/synonyms, fuzzy-match to factors."""
     lk, rows = factor_lookup(ef), []
     for line in (text or "").splitlines():
-        m = re.search(rf"(\d+(?:[.,]\d+)?)\s*{_UNITS}?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
+        # Group 1: Quantity, Group 2: Unit (optional), Group 3: Description
+        m = re.search(rf"(\d+(?:[.,]\d+)?)\s*({_UNITS})?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
         if not m:
             continue
-        qty, unit, desc = float(m.group(1).replace(",", "")), (m.group(2) or "").lower(), m.group(3).strip().lower()
-        if unit == "kg": qty, unit = qty / 1000, "tonne"
+            
+        qty = float(m.group(1).replace(",", ""))
+        unit = (m.group(2) or "").lower()
+        desc = m.group(3).strip().lower()
+        
+        # Unit conversion for kg to tonnes
+        if unit in ["kg"]: 
+            qty, unit = qty / 1000, "tonne"
+            
         clean = re.sub(r"[^a-z\s\-]", " ", desc)
         for k, v in _SYN.items():
-            if k in clean: clean = v; break
+            if k in clean: 
+                clean = v
+                break
+                
         hit = difflib.get_close_matches(clean.strip(), list(lk), n=1, cutoff=cutoff)
         score = difflib.SequenceMatcher(None, clean.strip(), hit[0]).ratio() if hit else 0
         f = lk.get(hit[0]) if hit else None
-        rows.append({"raw_line": line.strip(), "matched_material": hit[0].title() if hit else "NO MATCH",
-                     "match_confidence": round(score, 2), "quantity": round(qty, 3),
-                     "factor": f, "emissions_tco2e": round(qty * f, 3) if f else 0.0})
+        
+        rows.append({
+            "raw_line": line.strip(), 
+            "matched_material": hit[0].title() if hit else "NO MATCH",
+            "match_confidence": round(score, 2), 
+            "quantity": round(qty, 3),
+            "factor": f, 
+            "emissions_tco2e": round(qty * f, 3) if f else 0.0
+        })
     return pd.DataFrame(rows)
 
 
