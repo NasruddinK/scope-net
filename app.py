@@ -110,9 +110,10 @@ if nav_selection == "📊 Executive Dashboard":
 
 # ---- Tab 2: UPDATE + DELETE (+ raw READ) ----
 elif nav_selection == "🛠️ Live CRUD Operations":
+    st.subheader("🛠️ Live CRUD Operations (Full Field Control)")
     st.dataframe(df, use_container_width=True, height=300)
     u, d = st.columns(2)
-   with u:
+    with u:
         st.subheader("✏️ Update Record")
         if df.empty: 
             st.caption("No records.")
@@ -145,7 +146,9 @@ elif nav_selection == "🛠️ Live CRUD Operations":
         st.subheader("🗑️ Delete Records")
         ids = st.multiselect("Select erroneous/duplicate logs", df.log_id)
         if st.button("Delete selected", disabled=not ids):
-            st.session_state.df = U.delete_records(df, ids); st.rerun()
+            st.session_state.df = U.delete_records(df, ids)
+            st.success("Selected records deleted.")
+            st.rerun()
     st.download_button("⬇️ Export Full Dataset (CSV)", df.to_csv(index=False), "scope_net_export.csv")
 
 # ---- Tab 3: NLP/OCR ----
