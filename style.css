@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 1.05rem !important;
+    color: #1F2937;
+}
+
+.stApp {
+    background: #EEF4F2;
+}
+
+/* Vibrant Banner */
+.banner {
+    background: linear-gradient(135deg, #065F46 0%, #047857 50%, #10B981 100%);
+    color: #ffffff;
+    padding: 34px 42px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 25px -5px rgba(6, 95, 70, 0.3);
+}
+.banner h1 {
+    margin: 0;
+    font-size: 2.5rem !important;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+.banner p {
+    margin: 8px 0 0 0;
+    color: #6EE7B7;
+    font-size: 1.2rem !important;
+    font-weight: 500;
+}
+
+/* KPI Metric Cards (Centered) */
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 22px 24px;
+    border-top: 6px solid #046C4E;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease;
+    text-align: center !important;
+}
+.card:hover {
+    transform: translateY(-3px);
+}
+.card h3 {
+    margin: 0 0 6px 0;
+    color: #065F46;
+    font-size: 2.2rem !important;
+    font-weight: 700;
+}
+.card span {
+    color: #4B5563;
+    font-size: 0.95rem !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Footer */
+.footer {
+    background: #065F46;
+    color: #ECFDF5;
+    padding: 22px 30px;
+    border-radius: 16px;
+    margin-top: 40px;
+    font-size: 0.95rem !important;
+    line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Form inputs & tabs readability upgrade */
+.stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+    font-size: 1.1rem !important;
+}
+label, .stMultiSelect span {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #065F46 !important;
+    border-bottom-color: #065F46 !important;
+    font-weight: 700 !important;
+    font-size: 1.15rem !important;
+}
+.stTabs [aria-selected="false"] {
+    font-size: 1.1rem !important;
+    font-weight: 500 !important;
+}
