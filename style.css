@@ -3,6 +3,7 @@
 html, body, [class*="css"] {
     font-family: 'Poppins', sans-serif !important;
     font-size: 1.05rem !important;
+    color: #1F2937;
 }
 
 .stApp {
@@ -17,8 +18,6 @@ html, body, [class*="css"] {
     border-radius: 22px;
     margin-bottom: 24px;
     box-shadow: 0 12px 30px -5px rgba(5, 150, 105, 0.35);
-    position: relative;
-    overflow: hidden;
 }
 .banner h1 {
     margin: 0;
@@ -35,7 +34,7 @@ html, body, [class*="css"] {
     opacity: 0.95;
 }
 
-/* Interactive KPI Metric Cards */
+/* KPI Metric Cards (Centered) */
 .card {
     background: #ffffff;
     border-radius: 18px;
@@ -44,7 +43,6 @@ html, body, [class*="css"] {
     box-shadow: 0 6px 18px rgba(0,0,0,0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: center !important;
-    cursor: pointer;
 }
 .card:hover {
     transform: translateY(-6px);
@@ -66,53 +64,15 @@ html, body, [class*="css"] {
     letter-spacing: 0.8px;
 }
 
-/* Section Box Container wrapping each tab's content */
-.section-box {
+/* Section Wrapper Box Container */
+.section-container {
     background: #ffffff;
     border-radius: 20px;
-    padding: 30px 32px;
-    margin-top: 20px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    padding: 28px 32px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
     border: 1px solid #E5E7EB;
-}
-
-/* --- FIXED & ENHANCED INTERACTIVE TABS --- */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background-color: rgba(5, 150, 105, 0.06);
-    padding: 8px;
-    border-radius: 14px;
-}
-
-.stTabs [data-baseweb="tab"] {
-    height: 50px;
-    border-radius: 10px;
-    padding: 0 20px;
-    background-color: transparent;
-    transition: all 0.25s ease;
-}
-
-/* Tab text labels - forcing high contrast visibility in both Light/Dark mode */
-.stTabs [data-baseweb="tab"] p, 
-.stTabs [data-baseweb="tab"] span {
-    font-size: 1.1rem !important;
-    font-weight: 600 !important;
-    color: #065F46 !important;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    background-color: rgba(5, 150, 105, 0.15);
-}
-
-.stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
-}
-
-.stTabs [aria-selected="true"] p,
-.stTabs [aria-selected="true"] span {
-    color: #ffffff !important;
-    font-weight: 700 !important;
+    margin-top: 20px;
+    margin-bottom: 30px;
 }
 
 /* Interactive Buttons */
@@ -133,17 +93,11 @@ html, body, [class*="css"] {
     background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
 }
 
-/* Form inputs with interactive focus glow */
+/* Form inputs & labels */
 .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
     font-size: 1.1rem !important;
     border-radius: 10px !important;
-    transition: all 0.2s ease !important;
 }
-.stTextInput input:focus, .stNumberInput input:focus {
-    border-color: #10B981 !important;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
-}
-
 label, .stMultiSelect span {
     font-size: 1.05rem !important;
     font-weight: 600 !important;
