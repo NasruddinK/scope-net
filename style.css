@@ -105,7 +105,7 @@ label, .stMultiSelect span {
 }
 
 /* Navigation Hub Container Styling */
-div[data-testid="stContainer"] {
+div[data-testid="st.container"] {
     background-color: #FFFFFF !important;
     border-radius: 18px !important;
     padding: 10px 15px !important;
