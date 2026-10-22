@@ -179,26 +179,38 @@ def detect_anomalies(df: pd.DataFrame, contamination=0.03) -> pd.DataFrame:
 
 
 # ---------------- NLP / OCR simulation ----------------
-# Non-capturing inner unit pattern, wrapped in group 2 for optional unit capture
-_UNITS = r"(?:tonnes?|tons?|t|kg|m3|m³|cubic\s*m(?:eters?)?)"
+# Updated units: added sq.m / sqm for glass/panels and refined unit matching
+_UNITS = r"(?:tonnes?|tons?|t|kg|m3|m³|cubic\s*m(?:eters?)?|sq\.?m|square\s*m(?:eters?)?)"
 
-# Comprehensive synonym mapping for all target materials
+# Expanded synonym and keyword mapping covering all requested construction materials
 _SYN = {
+    # Cement
     "opc": "cement", "portland": "cement", "cement": "cement",
-    "rebar": "steel rebar", "reinforcing": "steel rebar", "steel": "steel rebar", "structural steel": "steel rebar",
-    "readymix": "concrete", "ready-mix": "concrete", "concrete": "concrete",
-    "aluminum": "aluminium", "aluminium": "aluminium",
+    # Steel / Rebar
+    "rebar": "steel rebar", "reinforcing": "steel rebar", "steel": "steel rebar", 
+    "structural steel": "steel rebar", "h-beam": "steel rebar", "coils": "steel rebar", 
+    "wire rods": "steel rebar", "wire rod": "steel rebar",
+    # Concrete
+    "readymix": "concrete", "ready-mix": "concrete", "concrete": "concrete", 
+    "conc": "concrete", "precast": "concrete", "low-carbon concrete": "concrete",
+    # Aluminium
+    "aluminum": "aluminium", "aluminium": "aluminium", "frames": "aluminium", 
+    "framing": "aluminium", "extrusions": "aluminium", "curtain panels": "aluminium",
+    # Timber / Wood
     "wood": "timber", "timber": "timber", "lumber": "timber",
-    "glass": "glass", "float glass": "glass", "safety glass": "glass",
+    # Glass
+    "glass": "glass", "float glass": "glass", "security glass": "glass", 
+    "architectural glass": "glass", "double-glazed": "glass", "laminated": "glass", "tempered": "glass",
+    # Asphalt
     "asphalt": "asphalt", "bitumen": "asphalt", "macadam": "asphalt"
 }
 
-def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.5) -> pd.DataFrame:
-    """Simulated OCR/NLP: regex-extract 'qty [unit] item' lines, normalise noise/synonyms, fuzzy-match to factors."""
+def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.4) -> pd.DataFrame:
+    """Simulated OCR/NLP: regex-extract 'qty unit item' lines, normalise noise/synonyms, fuzzy-match to factors."""
     lk, rows = factor_lookup(ef), []
     for line in (text or "").splitlines():
-        # Group 1: Quantity, Group 2: Unit (optional), Group 3: Description
-        m = re.search(rf"(\d+(?:[.,]\d+)?)\s*({_UNITS})?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
+        # Match lines starting with a number, optional unit, optional connector (of/x), followed by description
+        m = re.search(rf"^\s*(\d+(?:[.,]\d+)?)\s*({_UNITS})?\s*(?:of|x)?\s*([A-Za-z][\w\s\-/().]+)", line, re.I)
         if not m:
             continue
             
@@ -206,16 +218,23 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.5) -> pd.DataFrame:
         unit = (m.group(2) or "").lower()
         desc = m.group(3).strip().lower()
         
-        # Unit conversion for kg to tonnes
+        # Unit normalization / conversions
         if unit in ["kg"]: 
             qty, unit = qty / 1000, "tonne"
+        elif any(u in unit for u in ["sq", "square"]):
+            unit = "sq.m"
             
         clean = re.sub(r"[^a-z\s\-]", " ", desc)
+        
+        # Check matching against synonyms
+        matched_sub = False
         for k, v in _SYN.items():
             if k in clean: 
                 clean = v
+                matched_sub = True
                 break
-                
+        
+        # If no explicit synonym hit, keep core tokens for matching
         hit = difflib.get_close_matches(clean.strip(), list(lk), n=1, cutoff=cutoff)
         score = difflib.SequenceMatcher(None, clean.strip(), hit[0]).ratio() if hit else 0
         f = lk.get(hit[0]) if hit else None
@@ -225,11 +244,11 @@ def parse_invoice_text(text: str, ef: pd.DataFrame, cutoff=0.5) -> pd.DataFrame:
             "matched_material": hit[0].title() if hit else "NO MATCH",
             "match_confidence": round(score, 2), 
             "quantity": round(qty, 3),
+            "unit": unit,
             "factor": f, 
             "emissions_tco2e": round(qty * f, 3) if f else 0.0
         })
     return pd.DataFrame(rows)
-
 
 # ---------------- CRUD ----------------
 def create_record(df, ef, **f):
