@@ -165,13 +165,16 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.total_emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
-    rep = U.compliance_summary(df, comp)
-    fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
-    rep = rep[rep.framework.isin(fw)] if fw else rep
-    st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
-                                 color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), use_container_width=True)
-    st.dataframe(rep, use_container_width=True)
-    st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
+    if comp is None or "framework" not in comp.columns:
+        st.warning("Compliance framework data not found. Please check dataset files.")
+    else:
+        rep = U.compliance_summary(df, comp)
+        fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
+        rep = rep[rep.framework.isin(fw)] if fw else rep
+        st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
+                                     color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), width='stretch')
+        st.dataframe(rep, width='stretch')
+        st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
 
 # ---- Footer ----
 st.markdown('<div class="footer"><b>Disclaimer:</b> Outputs support, but do not replace, formal disclosures under IFRS S1/S2 and Malaysia\'s National Sustainability Reporting Framework (NSRF). Emission estimates rely on benchmark factors and require independent assurance before publication.<br>Built by <b>Team HUNE</b> · Sime Darby Property University Hackathon — Township of Tomorrow</div>', unsafe_allow_html=True)
