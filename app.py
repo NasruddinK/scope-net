@@ -110,7 +110,15 @@ if nav_selection == "📊 Executive Dashboard":
         b.plotly_chart(px.pie(v.groupby("material", as_index=False).total_emissions_tco2e.sum(), names="material", values="total_emissions_tco2e",
                               title="Emissions by Material", color_discrete_sequence=px.colors.sequential.Greens_r), use_container_width=True)
         ts = v.dropna(subset=["date"]).assign(month=lambda d: d.date.dt.to_period("M").astype(str)).groupby("month", as_index=False).total_emissions_tco2e.sum()
-        st.plotly_chart(px.line(ts, x="month", y="total_emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), use_container_width=True)
+        # Convert date to datetime on the fly for grouping, safely handling strings or datetime objects
+        chart_df = v.dropna(subset=["date"]).copy()
+        chart_df["dt_parsed"] = pd.to_datetime(chart_df["date"], errors="coerce", dayfirst=True)
+        
+        ts = chart_df.dropna(subset=["dt_parsed"]).assign(
+            month=lambda d: d.dt_parsed.dt.to_period("M").astype(str)
+        ).groupby("month", as_index=False).total_emissions_tco2e.sum()
+        
+        st.plotly_chart(px.line(ts, x="month", y="total_emissions_tco2e", markers=True, title="Monthly Carbon Trend", color_discrete_sequence=[GREEN]), width='stretch')
         st.subheader("🚩 Flagged Anomalies")
         st.dataframe(v[v.is_anomaly == "Yes"][["log_id", "township", "vendor", "material", "quantity", "total_emissions_tco2e", "verification_status"]], use_container_width=True)
 
