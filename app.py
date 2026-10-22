@@ -54,9 +54,6 @@ def format_display_df(dataframe):
         "assurance_level": "Assurance Level",
         "audit_compliance_status": "Audit Compliance Status",
         "penalty_risk_score": "Penalty Risk Score",
-        "requirement": "Requirement Description",
-        "status": "Status",
-        "evidence": "Evidence"
     }
     
     df_formatted = df_formatted.rename(columns=column_rename_map)
@@ -237,14 +234,18 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
-    rep = U.compliance_summary(df, comp)
-    if rep is not None and "framework" in rep.columns:
-        fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
-        rep = rep[rep.framework.isin(fw)] if fw else rep
-        st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
-                                     color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), width='stretch')
-        st.dataframe(format_display_df(rep), width='stretch', hide_index=True)
-        st.download_button("⬇️ Download audit report (CSV)", rep.to_csv(index=False), "scope_net_audit_report.csv")
+    if comp is not None and not comp.empty:
+        # Filter by framework if reporting_framework exists
+        fw_col = "reporting_framework" if "reporting_framework" in comp.columns else comp.columns[1]
+        available_fws = sorted(comp[fw_col].astype(str).unique())
+        fw = st.multiselect("Reporting Framework", available_fws, default=available_fws)
+        
+        rep_df = comp[comp[fw_col].isin(fw)] if fw else comp
+        
+        # Display with proper headers, 1-based numbering, and hidden index
+        st.dataframe(format_display_df(rep_df), width='stretch', hide_index=True)
+        
+        st.download_button("⬇️ Download audit report (CSV)", rep_df.to_csv(index=False), "scope_net_audit_report.csv")
     else:
         st.error("Compliance framework data could not be loaded.")
 
