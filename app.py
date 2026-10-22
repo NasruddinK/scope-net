@@ -15,6 +15,35 @@ def load_css(file_name):
 
 load_css("style.css")
 
+def format_display_df(dataframe):
+    """Format dataframe: add 1-based numbering, rename headers to proper names, and hide raw index."""
+    if dataframe is None or dataframe.empty:
+        return dataframe
+    
+    df_formatted = dataframe.copy()
+    
+    # Insert 1-based numbering column at the very beginning
+    df_formatted.insert(0, "No.", range(1, len(df_formatted) + 1))
+    
+    # Proper column name mapping
+    column_rename_map = {
+        "log_id": "Log ID",
+        "date": "Date & Time",
+        "vendor": "Vendor Name",
+        "vendor_tier": "Vendor Tier",
+        "township": "Township Site",
+        "material": "Material",
+        "material_description": "Material Description",
+        "quantity": "Quantity",
+        "unit": "Unit",
+        "factor_tco2e_per_unit": "Emission Factor (tCO₂e/Unit)",
+        "total_emissions_tco2e": "Total Emissions (tCO₂e)",
+        "verification_status": "Verification Status",
+        "is_anomaly": "Is Anomaly"
+    }
+    
+    df_formatted = df_formatted.rename(columns=column_rename_map)
+    return df_formatted
 
 def card(col, value, label):
     """Render a white KPI metric card with centered styling and larger numbers."""
