@@ -33,11 +33,14 @@ st.markdown('<div class="banner"><h1>🌿 SCoPE-Net</h1><p>Scope 3 Embodied Carb
 if st.session_state.demo:
     st.info("Some master CSVs were not found in /data — running with synthetic demo data.")
 
+# Safely coerce total emissions to numeric to prevent string/int TypeError
+total_carbon = pd.to_numeric(df.get("total_emissions_tco2e", pd.Series([0])), errors='coerce').sum()
+
 k = st.columns(4)
-card(k[0], f"{df.emissions_tco2e.sum():,.0f}", "Total Carbon (tCO₂e)")
+card(k[0], f"{total_carbon:,.0f}", "Total Carbon (tCO₂e)")
 card(k[1], f"{len(df):,}", "Delivery Logs")
-card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) else "0%", "Verified Rate")
-card(k[3], f"{int(df.is_anomaly.sum())}", "ML Anomalies")
+card(k[2], f"{(df.verification_status=='Verified').mean():.0%}" if len(df) and "verification_status" in df else "0%", "Verified Rate")
+card(k[3], f"{int((df.is_anomaly == 'Yes').sum()) if 'is_anomaly' in df else 0}", "ML Anomalies")
 
 # ---- Sidebar: CREATE (Updated with material description & square meters) ----
 with st.sidebar:
