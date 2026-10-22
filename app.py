@@ -5,7 +5,7 @@ import utils as U
 st.set_page_config(page_title="SCoPE-Net", page_icon="🌿", layout="wide")
 GREEN, MINT = "#046C4E", "#6EE7B7"
 
-# ---- Global styling: Google Font (Poppins) + vibrant color palette + big practical fonts ----
+# ---- Global styling: Google Font (Poppins) + vibrant color palette + centered cards & big practical fonts ----
 st.markdown(f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
@@ -41,20 +41,21 @@ html, body, [class*="css"] {{
     font-weight: 500;
 }}
 
-/* KPI Metric Cards */
+/* KPI Metric Cards (Centered) */
 .card {{
     background: #ffffff;
     border-radius: 16px;
     padding: 22px 24px;
-    border-left: 8px solid {GREEN};
+    border-top: 6px solid {GREEN};
     box-shadow: 0 6px 15px rgba(0,0,0,0.08);
     transition: transform 0.2s ease;
+    text-align: center !important;
 }}
 .card:hover {{
     transform: translateY(-3px);
 }}
 .card h3 {{
-    margin: 0;
+    margin: 0 0 6px 0;
     color: #065F46;
     font-size: 2.2rem !important;
     font-weight: 700;
