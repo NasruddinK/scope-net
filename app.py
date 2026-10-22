@@ -16,7 +16,7 @@ def load_css(file_name):
 load_css("style.css")
 
 def format_display_df(dataframe):
-    """Format dataframe: add 1-based numbering, rename headers to proper names, and hide raw index."""
+    """Format dataframe: add 1-based numbering, rename headers to proper names case-insensitively, and hide raw index."""
     if dataframe is None or dataframe.empty:
         return dataframe
     
@@ -25,7 +25,7 @@ def format_display_df(dataframe):
     # Insert 1-based numbering column at the very beginning
     df_formatted.insert(0, "No.", range(1, len(df_formatted) + 1))
     
-    # Proper column name mapping
+    # Comprehensive case-insensitive column name mapping
     column_rename_map = {
         "log_id": "Log ID",
         "date": "Date & Time",
@@ -45,10 +45,13 @@ def format_display_df(dataframe):
         "matched_material": "Matched Material",
         "match_confidence": "Confidence Rate",
         "raw_line": "Raw Line",
-        # Compliance report columns mapping
+        # Compliance report columns (handling both capitalized and lowercase variations)
         "compliance_id": "Compliance ID",
+        "requirement_id": "Compliance ID",
         "reporting_framework": "Reporting Framework",
+        "framework": "Reporting Framework",
         "disclosure_category": "Disclosure Category",
+        "category": "Disclosure Category",
         "reporting_entity": "Reporting Entity",
         "disclosure_year": "Disclosure Year",
         "reported_emissions_tco2e": "Reported Emissions (tCO₂e)",
@@ -57,7 +60,10 @@ def format_display_df(dataframe):
         "penalty_risk_score": "Penalty Risk Score"
     }
     
-    df_formatted = df_formatted.rename(columns=column_rename_map)
+    # Rename matching columns regardless of casing
+    rename_dict = {col: column_rename_map[col.lower()] for col in df_formatted.columns if col.lower() in column_rename_map}
+    df_formatted = df_formatted.rename(columns=rename_dict)
+    
     return df_formatted
 
 def card(col, value, label):
