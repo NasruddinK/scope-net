@@ -235,19 +235,21 @@ elif nav_selection == "🧾 NLP/OCR Ingestion Portal":
             st.metric("Parsed embodied carbon (tCO₂e)", f"{res.emissions_tco2e.sum():,.2f}")
 
 elif nav_selection == "📑 Audit Compliance Reports":
-    rep = U.compliance_summary(df, comp)
     if comp is not None and not comp.empty:
-        # Filter by framework if reporting_framework exists
+        # Determine the framework column name
         fw_col = "reporting_framework" if "reporting_framework" in comp.columns else comp.columns[1]
         available_fws = sorted(comp[fw_col].astype(str).unique())
-        fw = st.multiselect("Framework", sorted(rep.framework.astype(str).unique()), default=sorted(rep.framework.astype(str).unique()))
-        rep = rep[rep.framework.isin(fw)] if fw else rep
-        st.plotly_chart(px.histogram(rep, x="framework", color="status", barmode="group",
-                                     color_discrete_map={"Aligned": GREEN, "Partial": "#F59E0B", "Gap": "#DC2626"}), width='stretch')
         
+        # Multiselect filter for frameworks
+        fw = st.multiselect("Reporting Framework", available_fws, default=available_fws)
         rep_df = comp[comp[fw_col].isin(fw)] if fw else comp
         
-        # Display with proper headers, 1-based numbering, and hidden index
+        # Optional: Chart overview based on audit status if the column exists
+        status_col = "audit_compliance_status" if "audit_compliance_status" in comp.columns else comp.columns[-2]
+        st.plotly_chart(px.histogram(rep_df, x=fw_col, color=status_col, barmode="group",
+                                     color_discrete_map={"Compliant": GREEN, "Under Review": "#F59E0B", "Non-Compliant (Action Required)": "#DC2626"}), width='stretch')
+        
+        # Display table with proper headers, 1-based numbering, and hidden index
         st.dataframe(format_display_df(rep_df), width='stretch', hide_index=True)
         
         st.download_button("⬇️ Download audit report (CSV)", rep_df.to_csv(index=False), "scope_net_audit_report.csv")
