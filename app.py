@@ -47,27 +47,34 @@ card(k[3], f"{ml_anomalies}", "ML Anomalies")
 with st.sidebar:
     st.header("➕ Submit Delivery Log")
     with st.form("create", clear_on_submit=True):
-        vendor = st.text_input("Vendor", placeholder="e.g. YTL Cement Berhad")
-        vendor_tier = st.selectbox("Vendor tier", ["Tier 1 - Direct", "Tier 2 - Upstream"])
-        township = st.selectbox("Township site", sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))))
+        vendor = st.text_input("Vendor", placeholder="Enter your vendor name")
+        vendor_tier = st.selectbox("Vendor tier", ["Choose tier...", "Tier 1 - Direct", "Tier 2 - Upstream", "Tier 3"], index=0)
+        township = st.selectbox("Township site", ["Choose township..."] + sorted(set(U.TOWNSHIPS) | set(df.township.dropna().astype(str))), index=0)
         
         mats = sorted(ef.material.astype(str).unique()) if ef is not None else []
-        material = st.selectbox("Material", mats)
-        material_description = st.text_input("Material description", placeholder="e.g. OPC Portland Cement Bulk")
+        material = st.selectbox("Material", ["Choose material..."] + mats, index=0)
+        material_description = st.text_input("Material description", placeholder="Enter your material description")
         
-        qty = st.number_input("Quantity (square meter)", min_value=0.0, step=1.0, format="%.2f")
-        unit = st.selectbox("Unit", ["Tons", "Cubic Meters", "Square Meters"], index=2)
+        qty = st.number_input("Quantity", min_value=0.0, step=1.0, format="%.2f", value=0.0)
+        unit = st.selectbox("Unit", ["Choose unit...", "Tons", "Cubic Meters", "Square Meters"], index=0)
         
         # Date and Time inputs for timestamp
         c_date, c_time = st.columns(2)
         delivery_date = c_date.date_input("Delivery date")
         delivery_time = c_time.time_input("Delivery time")
         
-        v_status = st.selectbox("Verification status", U.STATUSES)
+        v_status = st.selectbox("Verification status", ["Choose status..."] + U.STATUSES, index=0)
         
         if st.form_submit_button("Submit & calculate"):
-            if not vendor.strip() or qty <= 0:
-                st.error("Vendor name and a positive quantity are required.")
+            # Validation check for default/invalid selections
+            if (vendor_tier == "Choose tier..." or 
+                township == "Choose township..." or 
+                material == "Choose material..." or 
+                unit == "Choose unit..." or 
+                v_status == "Choose status..." or 
+                not vendor.strip() or 
+                qty <= 0):
+                st.error("Please fill in all fields correctly and select valid dropdown options.")
             else:
                 st.session_state.df = U.create_record(
                     df, ef, township=township, vendor=vendor.strip(), vendor_tier=vendor_tier, 
@@ -76,6 +83,7 @@ with st.sidebar:
                     date=delivery_date, time=delivery_time
                 )
                 st.success("Delivery log added successfully!"); st.rerun()
+
 # ---- GAP BETWEEN KPIS AND NAVIGATION HUB ----
 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
 
